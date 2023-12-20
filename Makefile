@@ -1,4 +1,4 @@
-CC = gcc
+CC = g++
 CFLAGS = -g
 SRC = Compile.c AST.c Parse.c Interpreter.c Codegen.c
 OUT = a.out

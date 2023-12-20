@@ -1,29 +1,42 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
+#include "Keywords.h"
 #include "Interpreter.h"
 #include "Keywords.h"
 
-struct TokenStruct* stack[100];
+struct wizObject* stack[100];
 int size = 0;
 long programCounter = 0;
 
 void dumpStack() {
     puts("|---------Dump-----------|");
     for (int i = size ; i > -1; i--) {
-        printf("%s\n", stack[i]->lexeme);
+        if (stack[i] == NULL) {
+            continue;
+        }
+        if (typeid(double) == stack[i]->value.type()) {
+            std::cout << 
+            std::any_cast<double>(stack[i]) 
+            << std::endl;
+        } else if (typeid(enum Tokens) == stack[i]->value.type()) {
+            std::cout << 
+            std::any_cast<enum Tokens>(stack[i]) 
+            << std::endl;
+        }
         puts("-------------------------");
     }    
 }
 
-void* pop() {
+struct wizObject* pop() {
     if (size == 0)
         puts("Attempted to pop empty stack!");
         exit(EXIT_FAILURE);
-    struct TokenStruct* element = stack[size-1];
+    struct wizObject* element = stack[size-1];
     stack[size-1] = NULL;   
     size--;
-    return (void*)element;
+    return element;
 }
 
 void* push() {
@@ -32,23 +45,48 @@ void* push() {
         puts("Stack Overflow!");
         exit(EXIT_FAILURE);
     }
-    stack[size] = program[programCounter]->arg;
+    stack[size] = program[programCounter]->arg[0];
     return NULL;
 }
 
 void* binOpCode() {
-    switch (program[programCounter]->arg->token) {
+    enum Tokens operation = std::any_cast<enum Tokens>(
+        program[programCounter]
+        ->arg[0]
+        ->value
+    );
+    switch (operation) {
         case ADD:
-        break;
+        {
+            struct wizObject * val1 = pop();
+            struct wizObject * val2 = pop();
+            double val = std::any_cast<double>(val1->value) + std::any_cast<double>(val2->value);
+            program[programCounter]->arg[0]->value = val;
+            push();
+            break;
+        }
         case SUBTRACT:
-        break;
+        {
+            break;
+        }
         case MULTIPLY:
-        break;
+        {
+            break;
+        }
         case DIVIDE:
-        break;
+        {
+            break;
+        }
         case POWER:
-        break;
+        {
+            break;
+        }
+        default:
+        {
+            break;
+        }
     }
+    
     return NULL;
 }
 
@@ -56,5 +94,6 @@ void interpret() {
     while (programCounter < programSize) {
         program[programCounter]->associatedOperation();
         programCounter++;
+        dumpStack();
     }
 }

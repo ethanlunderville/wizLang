@@ -1,4 +1,0 @@
-/usr/bin/ld: /tmp/cc3cpBUJ.o: in function `main':
-/home/ethan/Desktop/newlang/Compile.c:69: undefined reference to `codeGen'
-collect2: error: ld returned 1 exit status
-make: *** [Makefile:11: a.out] Error 1

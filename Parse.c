@@ -13,6 +13,7 @@
     tokens into a tree.
 
 */
+
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +28,7 @@ long currentProgramListCounter = 0;
 long programListSize = 0;
 
 // Allocates space and returns lexemes of a single character.
+
 char* createSingleCharacterLexeme(char c) {
     char* lexeme = (char*) malloc(2);
     lexeme[0] = c;
@@ -35,6 +37,7 @@ char* createSingleCharacterLexeme(char c) {
 }
 
 // Allocates space and returns a number lexeme.
+
 char* createNumberLexeme(long * bufferIndex, char * buffer) {
     long currentIndex = *bufferIndex;
     while (
@@ -51,6 +54,8 @@ char* createNumberLexeme(long * bufferIndex, char * buffer) {
     *bufferIndex = currentIndex - 1;
     return lexeme;
 }
+
+// Adds a token to the list that the lexer outputs for the parser
 
 void addToProgramList(
     struct TokenStruct ** pList, 
@@ -69,6 +74,8 @@ void addToProgramList(
     (*index)++;
 }
 
+// Prints lexemes for debugging
+
 void printLexemes (struct TokenStruct **programList, long size) {
     for (long i = 0; i < size ; ++i) {
         printf(
@@ -80,6 +87,8 @@ void printLexemes (struct TokenStruct **programList, long size) {
     }
 }
 
+// Frees tokens of the program.
+
 void freeProgramList(struct TokenStruct **programList, long size) {
     for (long i = 0; i < size ; ++i) {
         if (programList[i] != NULL) {
@@ -89,6 +98,8 @@ void freeProgramList(struct TokenStruct **programList, long size) {
     }
     free(programList);
 }
+
+// Main function to perform lexical analysis. Tokens are stored in the program list for the parser
 
 void lex(char* buffer, struct TokenStruct ** programList, long * listCount) {
     long lineNo = 1;
@@ -114,19 +125,27 @@ void lex(char* buffer, struct TokenStruct ** programList, long * listCount) {
     }
 }
 
+// Parser utility
+
 void scan() {
     currentProgramListCounter++;
 }
 
+// Parser utility
+
 struct TokenStruct* getCurrentTokenStruct() {
     return programList[currentProgramListCounter];
 }
+
+// Parser utility
 
 bool isCurrentToken(enum Tokens token) {
     if (programListSize <= currentProgramListCounter)
         return false;
     return token == programList[currentProgramListCounter]->token;
 }
+
+// Parser utility
 
 bool onOpToken() {
     if (programListSize <= currentProgramListCounter)
@@ -135,6 +154,8 @@ bool onOpToken() {
         return true;
     return false;
 }
+
+// Parser utility
 
 void expect(enum Tokens token) {
     if (programList[currentProgramListCounter]->token != token) {
@@ -147,6 +168,9 @@ void expect(enum Tokens token) {
     }
     scan();
 }
+
+
+// Helps sExpression to parse atomic subExpressions
 
 struct AST* sAtomicExpr() {
     struct TokenStruct* tok = getCurrentTokenStruct();
@@ -162,6 +186,8 @@ struct AST* sAtomicExpr() {
     scan();
     return initAST(tok);
 }
+
+// Main expression parser algorithm. Here is a blogpost explaining it: <>
 
 struct AST* sExpression(int minPrecedence) {
     struct AST* lhs = sAtomicExpr();
@@ -182,6 +208,14 @@ struct AST* sExpression(int minPrecedence) {
     }
     return lhs;
 }
+
+/*
+
+    Main parse function. This begins the recursive
+    decent and returns a pointer to the root of the
+    Abstract Syntax Tree for the codegen stage.
+
+*/
 
 struct AST* parse() {
     programListSize = currentProgramListCounter;

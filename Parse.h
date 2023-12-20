@@ -13,7 +13,7 @@
 #define PARSE_H
 
 #include <stdbool.h>
-#include "AST.h" // Include necessary headers if needed
+#include "AST.h"
 
 char* createSingleCharacterLexeme(char c);
 char* createNumberLexeme(long * bufferIndex, char * buffer);

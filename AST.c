@@ -31,7 +31,7 @@ void printAST(struct AST* ast){
     if (ast->token == NULL) {
         puts("<NOINFO>");
     } else {
-        printf("%s\n",ast->token->lexeme);
+        printf("%s : %p\n",ast->token->lexeme, ast);
     }
     for (int i = 0 ; i < ast->childCount ; i++) {
         indentationCount += TREEINDENT;

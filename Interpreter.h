@@ -1,21 +1,27 @@
 #ifndef INTERPRETER_H
 #define INTERPRETER_H
 
+#include <any>
+
 struct TokenStruct;
 struct AST;
 
 typedef void* (*ByteCodeFunctionPtr)();
 
+struct wizObject {
+    std::any value;    
+};
+
 struct opCode {
     int argNum;
-    struct TokenStruct* arg;
+    struct wizObject ** arg;
     ByteCodeFunctionPtr associatedOperation;
 };
 
 struct opCode ** codeGen(struct AST * aTree);
 void codeGenWalker(struct AST * aTree);
 
-void* pop();
+wizObject* pop();
 void* push();
 void* binOpCode();
 

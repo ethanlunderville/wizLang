@@ -1,14 +1,14 @@
+#ifndef KEYWORDS_H
+#define KEYWORDS_H
+
 /*
 
-    Note: Tokens for the operators must be ordered
+    Tokens for the operators must be ordered
     from the tokens with the lowest precedence to the
     highest precedence. By precedence I am reffering
     to PEMDAS
 
 */
-
-#ifndef KEYWORDS_H
-#define KEYWORDS_H
 
 enum Tokens {
     ADD,
@@ -31,6 +31,13 @@ enum Types {
     OP,
     NONE
 };
+
+/*
+
+    The lexer outputs a series of these as an
+    intermediate representation of the source program
+
+*/
 
 struct TokenStruct {
     enum Tokens token;
