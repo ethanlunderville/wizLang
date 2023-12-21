@@ -1,7 +1,19 @@
+/*
+
+    Filename: Mem.h
+
+    Description:
+
+    Code for various random memory related things
+
+*/
+
 #ifndef MEM_H
 #define MEM_H
 
 #include "Keywords.h"
+
+// General code for growing arrays since C does not have dynaic arrays.
 
 void* reallocate(void ** pointer, long newSize) {
     if (*pointer == NULL){

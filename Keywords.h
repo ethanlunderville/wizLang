@@ -1,3 +1,13 @@
+/*
+
+    Filename: Keywords.h
+
+    Description:
+
+    Various structures needed by the lexer.
+
+*/
+
 #ifndef KEYWORDS_H
 #define KEYWORDS_H
 

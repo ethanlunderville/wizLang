@@ -14,7 +14,7 @@
 #include <string.h>
 #include "AST.h"
 
-int indentationCount = 0;
+int indentationCount = 0; // For printing tree
 
 /*
 
@@ -69,8 +69,7 @@ struct AST* initAST(struct TokenStruct * token) {
 // Recursively deallocates AST
 
 void deallocateAST(struct AST * headNode) {
-    for(int i = 0 ; i < headNode->childCount ; i++){
+    for(int i = 0 ; i < headNode->childCount ; i++)
         deallocateAST(headNode->children[i]);
-    }
     free(headNode);
 }

@@ -47,7 +47,7 @@ char* fileToBuffer(char * fileName) {
     }
     long fileSize = getFileSize(file);
     char *buffer = (char *) malloc(fileSize + 1);
-    programList = (struct TokenStruct *) malloc(sizeof(TokenStruct) * fileSize);
+    programList = (struct TokenStruct *) malloc(sizeof(struct TokenStruct) * fileSize);
     buffer[fileSize] = '\0';
     fread(buffer, 1, fileSize, file);
     fclose(file);

@@ -1,81 +1,152 @@
+/*
+
+    Filename: Codegen.c
+
+    Description:
+
+    This file contains code that transforms the AST
+    into a list of opCodes for the VM which is defined
+    in Interpreter.c
+
+*/
+
 #include <stdlib.h>
-#include <cstdlib>
-#include <cstdio>
+#include <stdio.h>
 #include "Interpreter.h"
 #include "AST.h"
 #include "Mem.h"
+
+/*
+
+    All program codes are stored in single continuos
+    block of memory. The program identifier points to
+    this block and can be used like an array. The
+    programCapacity is the size of the block in bytes
+    ( which should be sizeof(struct opCode) * some
+    number ) and programSize is the current size of
+    the list.
+
+*/
 
 long programSize = 0;
 long programCapacity = 0;
 struct opCode * program;
 
+/*
+
+    All wizObjects are also stored in a continuos
+    block of memory. This is for cpu caching
+    optimization. Similar to the program list from
+    above, wizSlabSize and wizSlabCapacity represent
+    the current size and capacity of the wizSlab
+    array.
+
+*/
+
 long wizSlabSize = 0;
 long wizSlabCapacity = 0;
 struct wizObject * wizSlab;
 
-void programAdder(int numArgs, ByteCodeFunctionPtr op) {
+
+////////////////////////////////////////////////////////////////
+// CODEGEN HELPERS
+////////////////////////////////////////////////////////////////
+
+// Constructor for the opCode that ensures it will be correctly laid out in memory
+
+struct opCode * programAdder(int numArgs, ByteCodeFunctionPtr op) {
     if (programSize == programCapacity) {
         programCapacity = GROW_CAPACITY(programCapacity);
-        GROW_ARRAY(struct opCode, (void**)&program, programCapacity);
+        GROW_ARRAY(
+            struct opCode, 
+            (void**)&program, 
+            programCapacity
+        );
     }
     program[programSize].argNum = numArgs;
     program[programSize].associatedOperation = op;
     programSize++;
+    return &program[programSize-1];
 }
 
-void addArg(struct wizObject * obj) {
-    if (!program[programSize].currentIndex) {
-        program[programSize].arg = (struct wizObject**) malloc(
-            program[programSize].argNum * sizeof(struct wizObject*)
+// Constructor for the wizObjects that ensures they will be correctly laid out in memory
+
+struct wizObject * initWizArg(union TypeStore val, enum Types type) {
+    if (wizSlabSize == wizSlabCapacity) {
+        wizSlabCapacity = GROW_CAPACITY(wizSlabCapacity);
+        GROW_ARRAY(
+            struct wizObject, 
+            (void**)&wizSlab, 
+            wizSlabCapacity
         );
     }
-    if (program[programSize].currentIndex == program[programSize].argNum) {
+    wizSlab[wizSlabSize].value = val;
+    wizSlab[wizSlabSize].type = type;
+    wizSlabSize++;
+    return &wizSlab[wizSlabSize - 1];
+}
+
+// Adds an argument to the opCode. 
+// See the opCode struct in Interpreter.h for more clarity
+
+void addArg(struct opCode * oCode, struct wizObject * obj) {
+    if (!oCode->currentIndex) 
+        oCode->arg = (struct wizObject**) malloc(
+            oCode->argNum * sizeof(struct wizObject*)
+        );
+        
+    if (oCode->currentIndex == oCode->argNum) {
         puts("ArgCount error");
         exit(1);
     }
-    program[programSize].arg[program[programSize].currentIndex] = obj;
-    program[programSize].currentIndex++;
+    oCode->arg[program[programSize].currentIndex] = obj;
+    oCode->currentIndex++;
 }
 
-struct wizObject* initWizArg(std::any val) {
-    if (wizSlabSize == wizSlabCapacity) {
-        wizSlabCapacity = GROW_CAPACITY(wizSlabCapacity);
-        GROW_ARRAY(struct wizObject, (void**)&wizSlab, wizSlabCapacity);
-    }
-    wizSlab[wizSlabSize].value = val;
-    return &wizSlab[wizSlabSize];
-}
+// Function that the Compiler.c file calls to kick off codeGen stage
 
 struct opCode * codeGen(struct AST * aTree) {
     codeGenWalker(aTree);
     return program;
 }
 
+/*
+
+    Main code gen function used to populate the
+    program and wizSlab lists. Recurses through the
+    AST and emits bytecodes depending on the current
+    AST node
+
+*/
+
 void codeGenWalker(struct AST * aTree) {
     if (aTree != NULL && aTree->token == NULL) {
-        for (int i = 0 ; i < aTree->childCount ; i++) {
+        for (int i = 0 ; i < aTree->childCount ; i++)
             codeGenWalker(aTree->children[i]);
-        }
         return;
     }
     switch (aTree->token->type) {
         case NUMBER:
             {
-            programAdder(1, push); 
+            union TypeStore value;
+            value.numValue = atof(aTree->token->lexeme); 
             addArg(
-                initWizArg(atof(aTree->token->lexeme))
+                programAdder(1, push),
+                initWizArg(value, NUMBER)
             );
             break;
             }
         case BINOP:
             {
-            for (int i = 0 ; i < aTree->childCount ; i++) {
-                codeGenWalker(aTree->children[i]);
-            }
-            programAdder(1, binOpCode); 
-            addArg(initWizArg(aTree->token->token));
+            for (int i = 0 ; i < aTree->childCount ; i++)
+                codeGenWalker(aTree->children[i]); 
+            union TypeStore value;
+            value.opValue = aTree->token->token;
+            addArg(
+                programAdder(1, binOpCode), 
+                initWizArg(value, BINOP)
+            );
             break;
-
             }
         default:
             break;

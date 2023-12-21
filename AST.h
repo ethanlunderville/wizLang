@@ -1,3 +1,13 @@
+/*
+
+    Filename: AST.h
+
+    Description:
+
+    AST struct and functions pertaining to it.
+
+*/
+
 #ifndef AST_H
 #define AST_H
 
