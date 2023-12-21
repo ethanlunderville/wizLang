@@ -19,8 +19,8 @@
 #include "Parse.h"
 #include "Interpreter.h"
 
-extern long currentProgramListCounter;
-extern struct TokenStruct ** programList;
+extern long programListSize;
+extern struct TokenStruct * programList;
 
 /* Functions to read the file into a single buffer */
 
@@ -47,7 +47,7 @@ char* fileToBuffer(char * fileName) {
     }
     long fileSize = getFileSize(file);
     char *buffer = (char *) malloc(fileSize + 1);
-    programList = (struct TokenStruct **) malloc((fileSize * sizeof(struct TokenStruct*)));
+    programList = (struct TokenStruct *) malloc(sizeof(TokenStruct) * fileSize);
     buffer[fileSize] = '\0';
     fread(buffer, 1, fileSize, file);
     fclose(file);
@@ -58,9 +58,9 @@ int main () {
     char* buffer = fileToBuffer("test.p"); 
     printf("File content:\n%s\n\n", buffer);
     /* LEXING STAGE */
-    lex(buffer, programList, &currentProgramListCounter);
+    lex(buffer, programList);
     puts("*** PRINTING LEXEMES ***");
-    printLexemes(programList, currentProgramListCounter);
+    printLexemes(programList, programListSize);
     puts("*** FINISHED PRINTING LEXEMES ***");
     /* PARSING STAGE */
     struct AST* aTree = parse();
@@ -70,7 +70,7 @@ int main () {
     codeGen(aTree);
     interpret();
     deallocateAST(aTree);
-    freeProgramList(programList, currentProgramListCounter);
+    freeProgramList(programList, programListSize);
     free(buffer);
     return EXIT_SUCCESS;
 }

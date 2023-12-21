@@ -14,11 +14,12 @@ struct wizObject {
 
 struct opCode {
     int argNum;
+    int currentIndex = 0;
     struct wizObject ** arg;
     ByteCodeFunctionPtr associatedOperation;
 };
 
-struct opCode ** codeGen(struct AST * aTree);
+struct opCode * codeGen(struct AST * aTree);
 void codeGenWalker(struct AST * aTree);
 
 wizObject* pop();
@@ -27,8 +28,5 @@ void* binOpCode();
 
 void dumpStack();
 void interpret();
-
-static long programSize;
-static struct opCode** program;
 
 #endif

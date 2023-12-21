@@ -23,7 +23,7 @@
 #include <assert.h>
 #include "Parse.h"
 
-struct TokenStruct ** programList;
+struct TokenStruct * programList;
 long currentProgramListCounter = 0;
 long programListSize = 0;
 
@@ -58,50 +58,46 @@ char* createNumberLexeme(long * bufferIndex, char * buffer) {
 // Adds a token to the list that the lexer outputs for the parser
 
 void addToProgramList(
-    struct TokenStruct ** pList, 
-    long * index, 
+    struct TokenStruct * pList, 
     char * lexeme,
     enum Types type, 
     long lineNo,
     enum Tokens token
 ) {
-    struct TokenStruct* tStruct = (struct TokenStruct*) malloc(sizeof(struct TokenStruct));
-    tStruct->token = token;
-    tStruct->lexeme = lexeme; 
-    tStruct->line = lineNo;
-    tStruct->type = type;
-    pList[*index] = tStruct;
-    (*index)++;
+    pList[currentProgramListCounter].token = token;
+    pList[currentProgramListCounter].lexeme = lexeme; 
+    pList[currentProgramListCounter].line = lineNo;
+    pList[currentProgramListCounter].type = type;
+    (currentProgramListCounter)++;
+    (programListSize)++;
 }
 
 // Prints lexemes for debugging
 
-void printLexemes (struct TokenStruct **programList, long size) {
+void printLexemes (struct TokenStruct * programList, long size) {
     for (long i = 0; i < size ; ++i) {
         printf(
             "%li) TOKEN:: %i, LEXEME:: %s\n", 
             i,
-            programList[i]->token, 
-            programList[i]->lexeme
+            programList[i].token, 
+            programList[i].lexeme
         );
     }
 }
 
 // Frees tokens of the program.
 
-void freeProgramList(struct TokenStruct **programList, long size) {
+void freeProgramList(struct TokenStruct * programList, long size) {
     for (long i = 0; i < size ; ++i) {
-        if (programList[i] != NULL) {
-            free(programList[i]->lexeme);
-            free(programList[i]);    
-        }
+        if (programList[i].lexeme != NULL) 
+            free(programList[i].lexeme);
     }
     free(programList);
 }
 
 // Main function to perform lexical analysis. Tokens are stored in the program list for the parser
 
-void lex(char* buffer, struct TokenStruct ** programList, long * listCount) {
+void lex(char* buffer, struct TokenStruct * programList) {
     long lineNo = 1;
     for (long i = 0; i < strlen(buffer); ++i) {
         switch (buffer[i]) {
@@ -109,17 +105,17 @@ void lex(char* buffer, struct TokenStruct ** programList, long * listCount) {
             case '\r':
             case '\t':
                 break;
-            case '+': addToProgramList(programList, listCount, createSingleCharacterLexeme('+'), BINOP, lineNo ,ADD); break;
-            case '-': addToProgramList(programList, listCount, createSingleCharacterLexeme('-'), BINOP, lineNo ,SUBTRACT); break;
-            case '*': addToProgramList(programList, listCount, createSingleCharacterLexeme('*'), BINOP, lineNo ,MULTIPLY); break;
-            case '/': addToProgramList(programList, listCount, createSingleCharacterLexeme('/'), BINOP, lineNo ,DIVIDE); break;
-            case '^': addToProgramList(programList, listCount, createSingleCharacterLexeme('^'), BINOP, lineNo ,POWER); break;
-            case '(': addToProgramList(programList, listCount, createSingleCharacterLexeme('('), OP, lineNo ,LEFTPARENTH); break;
-            case ')': addToProgramList(programList, listCount, createSingleCharacterLexeme(')'), OP, lineNo ,RIGHTPARENTH); break; 
+            case '+': addToProgramList(programList, createSingleCharacterLexeme('+'), BINOP, lineNo ,ADD); break;
+            case '-': addToProgramList(programList, createSingleCharacterLexeme('-'), BINOP, lineNo ,SUBTRACT); break;
+            case '*': addToProgramList(programList, createSingleCharacterLexeme('*'), BINOP, lineNo ,MULTIPLY); break;
+            case '/': addToProgramList(programList, createSingleCharacterLexeme('/'), BINOP, lineNo ,DIVIDE); break;
+            case '^': addToProgramList(programList, createSingleCharacterLexeme('^'), BINOP, lineNo ,POWER); break;
+            case '(': addToProgramList(programList, createSingleCharacterLexeme('('), OP, lineNo ,LEFTPARENTH); break;
+            case ')': addToProgramList(programList, createSingleCharacterLexeme(')'), OP, lineNo ,RIGHTPARENTH); break; 
             case '\n': lineNo++; break;           
             default:
                 if (isdigit(buffer[i])) {
-                    addToProgramList(programList, listCount, createNumberLexeme(&i, buffer), NUMBER, lineNo ,NUM);
+                    addToProgramList(programList, createNumberLexeme(&i, buffer), NUMBER, lineNo ,NUM);
                 }
         }
     }
@@ -134,7 +130,7 @@ void scan() {
 // Parser utility
 
 struct TokenStruct* getCurrentTokenStruct() {
-    return programList[currentProgramListCounter];
+    return &programList[currentProgramListCounter];
 }
 
 // Parser utility
@@ -142,7 +138,7 @@ struct TokenStruct* getCurrentTokenStruct() {
 bool isCurrentToken(enum Tokens token) {
     if (programListSize <= currentProgramListCounter)
         return false;
-    return token == programList[currentProgramListCounter]->token;
+    return token == programList[currentProgramListCounter].token;
 }
 
 // Parser utility
@@ -150,7 +146,7 @@ bool isCurrentToken(enum Tokens token) {
 bool onOpToken() {
     if (programListSize <= currentProgramListCounter)
         return false;
-    if (programList[currentProgramListCounter]->token < ENDOPS)
+    if (programList[currentProgramListCounter].token < ENDOPS)
         return true;
     return false;
 }
@@ -158,11 +154,11 @@ bool onOpToken() {
 // Parser utility
 
 void expect(enum Tokens token) {
-    if (programList[currentProgramListCounter]->token != token) {
+    if (programList[currentProgramListCounter].token != token) {
         printf(
             "ERROR IN PARSER:: EXPECTED: %i, GOT: %i\n", 
             token, 
-            programList[currentProgramListCounter]->token 
+            programList[currentProgramListCounter].token 
         );
         exit(1);        
     }
@@ -218,7 +214,6 @@ struct AST* sExpression(int minPrecedence) {
 */
 
 struct AST* parse() {
-    programListSize = currentProgramListCounter;
     currentProgramListCounter = 0;
     struct AST* aTree = initAST(NULL);
     while (currentProgramListCounter < programListSize) {

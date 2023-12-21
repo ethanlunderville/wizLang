@@ -6,6 +6,9 @@
 #include "Interpreter.h"
 #include "Keywords.h"
 
+extern long programSize;
+extern struct opCode * program;
+
 struct wizObject* stack[100];
 int size = 0;
 long programCounter = 0;
@@ -45,15 +48,13 @@ void* push() {
         puts("Stack Overflow!");
         exit(EXIT_FAILURE);
     }
-    stack[size] = program[programCounter]->arg[0];
+    stack[size] = program[programCounter].arg[0];
     return NULL;
 }
 
 void* binOpCode() {
     enum Tokens operation = std::any_cast<enum Tokens>(
-        program[programCounter]
-        ->arg[0]
-        ->value
+        program[programCounter].arg[0]->value
     );
     switch (operation) {
         case ADD:
@@ -61,7 +62,7 @@ void* binOpCode() {
             struct wizObject * val1 = pop();
             struct wizObject * val2 = pop();
             double val = std::any_cast<double>(val1->value) + std::any_cast<double>(val2->value);
-            program[programCounter]->arg[0]->value = val;
+            program[programCounter].arg[0]->value = val;
             push();
             break;
         }
@@ -92,7 +93,7 @@ void* binOpCode() {
 
 void interpret() {
     while (programCounter < programSize) {
-        program[programCounter]->associatedOperation();
+        program[programCounter].associatedOperation();
         programCounter++;
         dumpStack();
     }

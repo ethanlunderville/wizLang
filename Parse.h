@@ -17,10 +17,10 @@
 
 char* createSingleCharacterLexeme(char c);
 char* createNumberLexeme(long * bufferIndex, char * buffer);
-void addToProgramList(struct TokenStruct ** pList, long * index, char * lexeme, enum Types type ,long lineNo, enum Tokens token);
-void printLexemes(struct TokenStruct **programList, long size);
-void freeProgramList(struct TokenStruct **programList, long size);
-void lex(char* buffer, struct TokenStruct ** programList, long * listCount);
+void addToProgramList(struct TokenStruct * pList, char * lexeme, enum Types type ,long lineNo, enum Tokens token);
+void printLexemes(struct TokenStruct * programList, long size);
+void freeProgramList(struct TokenStruct * programList, long size);
+void lex(char* buffer, struct TokenStruct * programList);
 void scan();
 struct TokenStruct* getCurrentTokenStruct();
 bool isCurrentToken(enum Tokens token);
