@@ -21,22 +21,33 @@
 */
 
 enum Tokens {
+    JUNK,
+    /*BEGIN OPERATORS*/
+    BEGINOPERATORS,
     ADD,
     SUBTRACT,
     MULTIPLY,
     DIVIDE,
     POWER,
-    LEFTPARENTH,
-    RIGHTPARENTH, 
-    ENDOPS,
+    /*BEGIN OPERANDS*/
+    BEGINOPERANDS,
+    RIGHTPARENTH,
+    LEFTPARENTH, 
     /*END OPERATORS*/
-    NUM,
-    END
+    ENDOPERATORS,
+    NUM, 
+    STRING,
+    IDENTIFIER,
+    /*END OPERANDS*/
+    ENDOPERANDS,
+    COMMA,
+    ENDLINE,
+    ENDOFFILE
 };
 
 enum Types {
     NUMBER,
-    STRING,
+    STRINGTYPE,
     BINOP,
     OP,
     NONE

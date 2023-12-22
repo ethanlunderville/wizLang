@@ -36,7 +36,7 @@ struct wizObject {
 struct opCode {
     int argNum;
     int currentIndex;
-    struct wizObject ** arg;
+    int argIndexes[5];
     ByteCodeFunctionPtr associatedOperation;
 };
 

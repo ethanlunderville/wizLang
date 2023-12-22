@@ -55,11 +55,15 @@ struct wizObject * wizSlab;
 // Constructor for the opCode that ensures it will be correctly laid out in memory
 
 struct opCode * programAdder(int numArgs, ByteCodeFunctionPtr op) {
+    if (programSize == 0) {
+        program = INIT_ARRAY(struct opCode);
+        programCapacity = BASE_CAPACITY;
+    }
     if (programSize == programCapacity) {
         programCapacity = GROW_CAPACITY(programCapacity);
-        GROW_ARRAY(
+        program = GROW_ARRAY(
             struct opCode, 
-            (void**)&program, 
+            program, 
             programCapacity
         );
     }
@@ -71,35 +75,34 @@ struct opCode * programAdder(int numArgs, ByteCodeFunctionPtr op) {
 
 // Constructor for the wizObjects that ensures they will be correctly laid out in memory
 
-struct wizObject * initWizArg(union TypeStore val, enum Types type) {
+long initWizArg(union TypeStore val, enum Types type) {
+    if (wizSlabSize == 0) {
+        wizSlab = INIT_ARRAY(struct wizObject);
+        wizSlabCapacity = BASE_CAPACITY;
+    }
     if (wizSlabSize == wizSlabCapacity) {
         wizSlabCapacity = GROW_CAPACITY(wizSlabCapacity);
-        GROW_ARRAY(
+        wizSlab = GROW_ARRAY(
             struct wizObject, 
-            (void**)&wizSlab, 
+            wizSlab, 
             wizSlabCapacity
         );
     }
     wizSlab[wizSlabSize].value = val;
     wizSlab[wizSlabSize].type = type;
     wizSlabSize++;
-    return &wizSlab[wizSlabSize - 1];
+    return wizSlabSize - 1;
 }
 
 // Adds an argument to the opCode. 
 // See the opCode struct in Interpreter.h for more clarity
 
-void addArg(struct opCode * oCode, struct wizObject * obj) {
-    if (!oCode->currentIndex) 
-        oCode->arg = (struct wizObject**) malloc(
-            oCode->argNum * sizeof(struct wizObject*)
-        );
-        
+void addArg(struct opCode * oCode, long wizIndex) {
     if (oCode->currentIndex == oCode->argNum) {
-        puts("ArgCount error");
+        puts("ArgCount error: Too many args");
         exit(1);
     }
-    oCode->arg[program[programSize].currentIndex] = obj;
+    oCode->argIndexes[oCode->currentIndex] = wizIndex;
     oCode->currentIndex++;
 }
 

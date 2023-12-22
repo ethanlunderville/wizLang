@@ -24,10 +24,10 @@ void lex(char* buffer, struct TokenStruct * programList);
 void scan();
 struct TokenStruct* getCurrentTokenStruct();
 bool isCurrentToken(enum Tokens token);
-bool onOpToken();
+bool onOperatorToken();
 void expect(enum Tokens token);
 struct AST* sAtomicExpr();
-struct AST* sExpression(int minPrecedence);
+struct AST* sExpression();
 struct AST* parse();
 
 #endif

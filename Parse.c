@@ -105,6 +105,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
             case '\r':
             case '\t':
                 break;
+            case ',': addToProgramList(programList, createSingleCharacterLexeme(','), NONE, lineNo ,COMMA); break;
             case '+': addToProgramList(programList, createSingleCharacterLexeme('+'), BINOP, lineNo ,ADD); break;
             case '-': addToProgramList(programList, createSingleCharacterLexeme('-'), BINOP, lineNo ,SUBTRACT); break;
             case '*': addToProgramList(programList, createSingleCharacterLexeme('*'), BINOP, lineNo ,MULTIPLY); break;
@@ -112,13 +113,18 @@ void lex(char* buffer, struct TokenStruct * programList) {
             case '^': addToProgramList(programList, createSingleCharacterLexeme('^'), BINOP, lineNo ,POWER); break;
             case '(': addToProgramList(programList, createSingleCharacterLexeme('('), OP, lineNo ,LEFTPARENTH); break;
             case ')': addToProgramList(programList, createSingleCharacterLexeme(')'), OP, lineNo ,RIGHTPARENTH); break; 
-            case '\n': lineNo++; break;           
+            case '\n': {
+                addToProgramList(programList, createSingleCharacterLexeme('\n'), NONE, lineNo ,ENDLINE);
+                lineNo++; 
+                break; 
+            }           
             default:
                 if (isdigit(buffer[i])) {
                     addToProgramList(programList, createNumberLexeme(&i, buffer), NUMBER, lineNo ,NUM);
                 }
         }
     }
+    addToProgramList(programList, createSingleCharacterLexeme(' '), NONE, lineNo ,ENDOFFILE);
 }
 
 // Parser utility
@@ -143,11 +149,44 @@ bool isCurrentToken(enum Tokens token) {
 
 // Parser utility
 
-bool onOpToken() {
+bool onOperatorToken() {
     if (programListSize <= currentProgramListCounter)
         return false;
-    if (programList[currentProgramListCounter].token < ENDOPS)
+    if (programList[currentProgramListCounter].token < ENDOPERATORS
+     && programList[currentProgramListCounter].token > BEGINOPERATORS)
         return true;
+    return false;
+}
+
+// Parser utility
+
+bool onOperandToken() {
+    if (programListSize <= currentProgramListCounter)
+        return false;
+    if (programList[currentProgramListCounter].token < ENDOPERANDS 
+     && programList[currentProgramListCounter].token > BEGINOPERANDS)
+        return true;
+    return false;
+}
+
+// Parser utility
+
+bool onData() {
+    if (programListSize <= currentProgramListCounter)
+        return false;
+    if (isCurrentToken(NUM) || isCurrentToken(STRING))
+        return true;
+    return false;
+}
+
+// Parser ulility
+
+bool onExpressionBreaker() {
+    if ( isCurrentToken(ENDLINE)
+       ||isCurrentToken(ENDOFFILE)
+       ||isCurrentToken(RIGHTPARENTH)
+       ||isCurrentToken(COMMA)
+    ) return true;
     return false;
 }
 
@@ -165,44 +204,110 @@ void expect(enum Tokens token) {
     scan();
 }
 
+#define AST_STACKCAP 50
 
-// Helps sExpression to parse atomic subExpressions
+struct ASTStack {
+    long size;
+    struct AST * stack[AST_STACKCAP];
+};
 
-struct AST* sAtomicExpr() {
-    struct TokenStruct* tok = getCurrentTokenStruct();
-    if (tok->token == LEFTPARENTH) {
-        scan();
-        struct AST* subExpr = sExpression(0);
-        expect(RIGHTPARENTH);
-        return subExpr;
-    } else if (tok == NULL) {
-        printf("Source program ended unexpectedly when parsing expression");
+static void push (struct ASTStack * stack, struct AST* aTree) {
+    if (AST_STACKCAP == stack->size) {
+        puts("STACK OVERFLOW FROM LARGE EXPRESSION");
+        exit(1);
     }
-    assert(tok->token == NUM);
-    scan();
-    return initAST(tok);
+    stack->stack[stack->size] = aTree;
+    stack->size++;
 }
 
-// Main expression parser algorithm. Here is a blogpost explaining it: <>
-
-struct AST* sExpression(int minPrecedence) {
-    struct AST* lhs = sAtomicExpr();
-    while (1) {
-        struct TokenStruct* tok = getCurrentTokenStruct();
-        if (tok == NULL || !onOpToken() || tok->token < minPrecedence )
-            break;
-        struct AST* op = initAST(tok);
-        int nextPrecedence = tok->token;
-        if (nextPrecedence != POWER) {
-            nextPrecedence++;
-        }
-        scan();
-        struct AST* rhs = sExpression(nextPrecedence);
-        addChild(op, lhs);
-        addChild(op, rhs);
-        lhs = op;
+static struct AST* pop (struct ASTStack * stack) {
+    if (0 == stack->size){
+        puts("Cannot pop empty stack!");
+        exit(1);
     }
-    return lhs;
+    stack->size--;
+    return stack->stack[stack->size];
+}
+
+static struct AST* peek (struct ASTStack * stack) {
+    return stack->stack[stack->size - 1];
+}
+
+struct AST * sExpression() {
+
+    struct AST* aTree = initAST(NULL);
+    struct ASTStack operatorStack;
+    operatorStack.size = 0;
+    struct ASTStack operandStack;
+    operandStack.size = 0;
+
+    struct TokenStruct trash;
+    trash.token = JUNK;
+    struct AST* bottom = initAST(&trash);
+
+    push(&operatorStack,bottom);
+
+    while (1) {
+        printf("%s ", getCurrentTokenStruct()->lexeme);
+        if (!onOperandToken()) {
+            puts("Malformed expression");
+            exit(1);
+        }
+        if (isCurrentToken(LEFTPARENTH)){
+            scan();
+            push(&operatorStack, sExpression());
+            expect(RIGHTPARENTH);
+        } else if (onData()) {
+            push(&operandStack, initAST(getCurrentTokenStruct()));
+            scan();
+        } else if (onExpressionBreaker()){
+            break;
+        }
+        printf("%s ", getCurrentTokenStruct()->lexeme);
+        if (onOperatorToken()) {
+            struct AST* opTree = initAST(getCurrentTokenStruct());
+            if (peek(&operatorStack)->token->token > opTree->token->token) {
+                int target = opTree->token->token;
+                while (peek(&operatorStack)->token->token > target) {
+                    struct AST * operand2 = pop(&operandStack); 
+                    struct AST * operand1 = pop(&operandStack);
+                    int savePrecedence = peek(&operatorStack)->token->token;
+                    struct AST* operatorHold = pop(&operatorStack);
+                    /* EDGE CASE */
+                    //nonAssociativeTypeFlipper( operatorHold, operatorStack.top(), savePrecedence);
+                    addChild(operatorHold, operand1);
+                    addChild(operatorHold, operand2); 
+                    push(&operandStack, operatorHold);
+                }
+            }
+            push(&operatorStack, opTree);
+            scan();
+        } else if (onExpressionBreaker()){
+            break;
+        } else { 
+            puts("Malformed expression");
+            exit(1);
+        }
+    }
+    if (operandStack.size < 1) {
+        puts("Malformed expression");
+        exit(1);
+    }
+    while (operandStack.size != 1) {
+        struct AST * operand2 = pop(&operandStack); 
+        struct AST * operand1 = pop(&operandStack);
+        int savePrecedence = peek(&operatorStack)->token->token;
+        struct AST* operatorHold = pop(&operatorStack);
+        /* EDGE CASE */
+        //nonAssociativeTypeFlipper( operatorHold, operatorStack.top(), savePrecedence);
+        addChild(operatorHold, operand1);
+        addChild(operatorHold, operand2); 
+        push(&operandStack, operatorHold);
+    }
+    struct AST * re = pop(&operandStack);
+    //addChild(aTree,pop(&operandStack));
+    pop(&operatorStack);
+    return re;
 }
 
 /*
@@ -217,7 +322,7 @@ struct AST* parse() {
     currentProgramListCounter = 0;
     struct AST* aTree = initAST(NULL);
     while (currentProgramListCounter < programListSize) {
-        if (onOpToken() || isCurrentToken(NUM)) {
+        if (onOperatorToken() || isCurrentToken(NUM)) {
             addChild(aTree, sExpression(0));
         }
         scan();

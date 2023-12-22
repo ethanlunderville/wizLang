@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "Keywords.h"
 #include "Interpreter.h"
 #include "Keywords.h"
@@ -22,12 +23,20 @@
 extern long programSize; 
 extern struct opCode * program;
 
+// These two are defined in Codegen.c
+extern long wizSlabSize;
+extern struct wizObject * wizSlab;
+
 // Runtime Stack 
 struct wizObject* stack[STACK_LIMIT];
 int stackSize = 0;
 
 // Approaches program size as the program executes
 long instructionIndex = 0;
+
+struct wizObject * fetchArg (struct opCode * op, int argNum) {
+    return &wizSlab[op->argIndexes[argNum]];
+}
 
 // Stack dumper for debugging
 
@@ -37,7 +46,7 @@ void dumpStack() {
         if (stack[i] == NULL) 
             continue;
         switch (stack[i]->type) {
-            case STRING:
+            case STRINGTYPE:
                 printf(
                     " %s\n", 
                     stack[i]->value.strValue
@@ -73,38 +82,58 @@ void* push() {
         exit(EXIT_FAILURE);
     }
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
-    stack[stackSize] = program[instructionIndex].arg[0];
+    stack[stackSize] = fetchArg(&program[instructionIndex],0);
     stackSize++;
     return NULL;
 }
 
 void* binOpCode() {
-    enum Tokens operation = program[instructionIndex].arg[0]->value.opValue;
+    enum Tokens operation = fetchArg(&program[instructionIndex],0)->value.opValue;
     switch (operation) {
         case ADD:
         {
-            struct wizObject * val1 = pop();
-            struct wizObject * val2 = pop();
-            double val = val2->value.numValue + val1->value.numValue;
-            program[instructionIndex].arg[0]->value.numValue = val;
-            program[instructionIndex].arg[0]->type = NUMBER;
+            fetchArg(&program[instructionIndex],0)->value.numValue = (
+                pop()->value.numValue + pop()->value.numValue
+            );
+            fetchArg(&program[instructionIndex],0)->type = NUMBER;
             push();
             break;
         }
         case SUBTRACT:
         {
+            double rightHand = pop()->value.numValue;
+            fetchArg(&program[instructionIndex],0)->value.numValue = (
+                pop()->value.numValue - rightHand
+            );
+            fetchArg(&program[instructionIndex],0)->type = NUMBER;
+            push();
             break;
         }
         case MULTIPLY:
         {
+            fetchArg(&program[instructionIndex],0)->value.numValue = (
+                pop()->value.numValue * pop()->value.numValue
+            );
+            fetchArg(&program[instructionIndex],0)->type = NUMBER;
+            push();
             break;
         }
         case DIVIDE:
         {
+            double rightHand = pop()->value.numValue;
+            fetchArg(&program[instructionIndex],0)->value.numValue = (
+                pop()->value.numValue / rightHand
+            );
+            fetchArg(&program[instructionIndex],0)->type = NUMBER;
+            push();
             break;
         }
         case POWER:
         {
+            double rightHand = pop()->value.numValue;
+            fetchArg(&program[instructionIndex],0)->value.numValue = (pow(pop()->value.numValue, rightHand));
+            fetchArg(&program[instructionIndex],0)->type = NUMBER;
+            push();
             break;
         }
         default:
