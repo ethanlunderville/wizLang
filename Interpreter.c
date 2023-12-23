@@ -34,6 +34,15 @@ int stackSize = 0;
 // Approaches program size as the program executes
 long instructionIndex = 0;
 
+/*
+
+    This is to fetch args from the flattened list of
+    arguments. See the initWizArg function in
+    Codegen.c for a explaination as to why this is
+    done in this way
+
+*/
+
 struct wizObject * fetchArg (struct opCode * op, int argNum) {
     return &wizSlab[op->argIndexes[argNum]];
 }
@@ -83,10 +92,11 @@ void* push() {
     }
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     stack[stackSize] = fetchArg(&(program[instructionIndex]),0);
-    printf("Interpret wizarg %p\n", &stack[stackSize]);
     stackSize++;
     return NULL;
 }
+
+// Handles binary operations
 
 void* binOpCode() {
     enum Tokens operation = fetchArg(&program[instructionIndex],0)->value.opValue;
@@ -145,6 +155,16 @@ void* binOpCode() {
     
     return NULL;
 }
+
+/*
+
+    Interpreter: Stage 4
+
+    Description:
+
+    Driver code for the VM.
+
+*/
 
 void interpret() {
     while (instructionIndex < programSize) {

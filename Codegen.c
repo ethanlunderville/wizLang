@@ -75,7 +75,17 @@ struct opCode * programAdder(ByteCodeFunctionPtr op) {
     return &program[programSize-1];
 }
 
-// Constructor for the wizObjects that ensures they will be correctly laid out in memory
+/*
+
+    Since the wizArgs are stored in a continuous array
+    in memory that may be resized, the pointers are
+    subject to change. Because of this the opCode
+    struct stores the indexes of the wizObjects rather
+    than the pointers that were assigned when the
+    object was created. That is also why the function 
+    returns a long instead of a pointer.
+
+*/
 
 long initWizArg(union TypeStore val, enum Types type) {
     if (wizSlabSize == 0) {
@@ -90,7 +100,6 @@ long initWizArg(union TypeStore val, enum Types type) {
             wizSlabCapacity
         );
     }
-    printf("Codegen wizarg %p\n", &wizSlab[wizSlabSize]);
     wizSlab[wizSlabSize].value = val;
     wizSlab[wizSlabSize].type = type;
     wizSlabSize++;
@@ -117,6 +126,10 @@ struct opCode * codeGen(struct AST * aTree) {
 }
 
 /*
+
+    Code Generator: Stage 3
+
+    Description:
 
     Main code gen function used to populate the
     program and wizSlab lists. Recurses through the

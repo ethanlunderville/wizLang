@@ -9,6 +9,11 @@ void setErrorFile(char* buffer) {
     fileBuffer = buffer;
 }
 
+void FATAL_ERROR(enum ErrorType err, char* message, long line) {
+    ERROR(err, message, line);
+    exit(1);
+}
+
 void ERROR(enum ErrorType err, char* message, long line) {
     puts("");
     switch (err) {
@@ -26,11 +31,10 @@ void ERROR(enum ErrorType err, char* message, long line) {
     long lowBound = line - 3;
     long highBound = line + 3;
     if (1 > lowBound) {
-        if (lineCount == line) {
+        if (lineCount == line) 
             printf("\033[1;31m  1|  \033[0m");
-        } else {
+        else 
             printf("  1|  ");
-        }
     } 
     for (int i = 0 ; i < strlen(fileBuffer) ; i++) {
         if (fileBuffer[i] == '\n')
@@ -50,9 +54,6 @@ void ERROR(enum ErrorType err, char* message, long line) {
         }
     }
     puts("");
-    exit(1);
 }
 
 #endif
-/*
-*/

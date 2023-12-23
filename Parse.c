@@ -24,9 +24,50 @@
 #include "Error.h"
 #include "Parse.h"
 
-struct TokenStruct * programList;
+struct TokenStruct * programList; // Series of tokens representing the source program
 long currentProgramListCounter = 0;
 long programListSize = 0;
+
+////////////////////////////////////////////////////////////////
+// LEXING RELATED FUNCTIONS
+////////////////////////////////////////////////////////////////
+
+/*
+
+    Lexer: STAGE 1
+
+    Description:
+
+    Main function to perform lexical analysis. Tokens
+    are stored in the program list for the parser
+
+*/
+
+void lex(char* buffer, struct TokenStruct * programList) {
+    long lineNo = 1;
+    for (long i = 0; i < strlen(buffer); ++i) {
+        switch (buffer[i]) 
+        {
+        case ' ':
+        case '\r':
+        case '\t':
+            break;
+        case ',': addToProgramList(createSingleCharacterLexeme(','), NONE, lineNo ,COMMA); break;
+        case '+': addToProgramList(createSingleCharacterLexeme('+'), BINOP, lineNo ,ADD); break;
+        case '-': addToProgramList(createSingleCharacterLexeme('-'), BINOP, lineNo ,SUBTRACT); break;
+        case '*': addToProgramList(createSingleCharacterLexeme('*'), BINOP, lineNo ,MULTIPLY); break;
+        case '/': addToProgramList(createSingleCharacterLexeme('/'), BINOP, lineNo ,DIVIDE); break;
+        case '^': addToProgramList(createSingleCharacterLexeme('^'), BINOP, lineNo ,POWER); break;
+        case '(': addToProgramList(createSingleCharacterLexeme('('), OP, lineNo ,LEFTPARENTH); break;
+        case ')': addToProgramList(createSingleCharacterLexeme(')'), OP, lineNo ,RIGHTPARENTH); break; 
+        case '\n': addToProgramList(createSingleCharacterLexeme('\n'), NONE, lineNo ,ENDLINE); lineNo++; break;   
+        default:
+            if (isdigit(buffer[i])) 
+                addToProgramList(createNumberLexeme(&i, buffer), NUMBER, lineNo ,NUM);
+        }
+    }
+    addToProgramList(createSingleCharacterLexeme(' '), NONE, lineNo ,ENDOFFILE);
+}
 
 // Allocates space and returns lexemes of a single character.
 
@@ -41,13 +82,8 @@ char* createSingleCharacterLexeme(char c) {
 
 char* createNumberLexeme(long * bufferIndex, char * buffer) {
     long currentIndex = *bufferIndex;
-    while (
-        isdigit(buffer[currentIndex]) 
-        || buffer[currentIndex] == '.' 
-        /*For decimal numbers*/
-    ) {
+    while (isdigit(buffer[currentIndex]) || buffer[currentIndex] == '.') 
         currentIndex++;
-    }
     long diff = currentIndex - *bufferIndex;
     char* lexeme = (char*)malloc(diff+1);
     memcpy(lexeme, buffer + (*bufferIndex), diff);
@@ -59,31 +95,29 @@ char* createNumberLexeme(long * bufferIndex, char * buffer) {
 // Adds a token to the list that the lexer outputs for the parser
 
 void addToProgramList(
-    struct TokenStruct * pList, 
     char * lexeme,
     enum Types type, 
     long lineNo,
     enum Tokens token
 ) {
-    pList[currentProgramListCounter].token = token;
-    pList[currentProgramListCounter].lexeme = lexeme; 
-    pList[currentProgramListCounter].line = lineNo;
-    pList[currentProgramListCounter].type = type;
-    (currentProgramListCounter)++;
-    (programListSize)++;
+    programList[currentProgramListCounter].token = token;
+    programList[currentProgramListCounter].lexeme = lexeme; 
+    programList[currentProgramListCounter].line = lineNo;
+    programList[currentProgramListCounter].type = type;
+    currentProgramListCounter++;
+    programListSize++;
 }
 
 // Prints lexemes for debugging
 
 void printLexemes (struct TokenStruct * programList, long size) {
-    for (long i = 0; i < size ; ++i) {
+    for (long i = 0; i < size ; ++i)
         printf(
             "%li) TOKEN:: %i, LEXEME:: %s\n", 
             i,
             programList[i].token, 
             programList[i].lexeme
         );
-    }
 }
 
 // Frees tokens of the program.
@@ -96,42 +130,37 @@ void freeProgramList(struct TokenStruct * programList, long size) {
     free(programList);
 }
 
-// Main function to perform lexical analysis. Tokens are stored in the program list for the parser
+////////////////////////////////////////////////////////////////
+// PARSING RELATED FUNCTIONS
+////////////////////////////////////////////////////////////////
 
-void lex(char* buffer, struct TokenStruct * programList) {
-    long lineNo = 1;
-    for (long i = 0; i < strlen(buffer); ++i) {
-        switch (buffer[i]) {
-            case ' ':
-            case '\r':
-            case '\t':
-                break;
-            case ',': addToProgramList(programList, createSingleCharacterLexeme(','), NONE, lineNo ,COMMA); break;
-            case '+': addToProgramList(programList, createSingleCharacterLexeme('+'), BINOP, lineNo ,ADD); break;
-            case '-': addToProgramList(programList, createSingleCharacterLexeme('-'), BINOP, lineNo ,SUBTRACT); break;
-            case '*': addToProgramList(programList, createSingleCharacterLexeme('*'), BINOP, lineNo ,MULTIPLY); break;
-            case '/': addToProgramList(programList, createSingleCharacterLexeme('/'), BINOP, lineNo ,DIVIDE); break;
-            case '^': addToProgramList(programList, createSingleCharacterLexeme('^'), BINOP, lineNo ,POWER); break;
-            case '(': addToProgramList(programList, createSingleCharacterLexeme('('), OP, lineNo ,LEFTPARENTH); break;
-            case ')': addToProgramList(programList, createSingleCharacterLexeme(')'), OP, lineNo ,RIGHTPARENTH); break; 
-            case '\n': {
-                addToProgramList(programList, createSingleCharacterLexeme('\n'), NONE, lineNo ,ENDLINE);
-                lineNo++; 
-                break; 
-            }           
-            default:
-                if (isdigit(buffer[i])) {
-                    addToProgramList(programList, createNumberLexeme(&i, buffer), NUMBER, lineNo ,NUM);
-                }
-        }
+/*
+
+    Parser: STAGE 2
+
+    Description:
+
+    Main parse function. This begins the recursive
+    decent and returns a pointer to the root of the
+    Abstract Syntax Tree for the codegen stage.
+
+*/
+
+struct AST* parse() {
+    currentProgramListCounter = 0;
+    struct AST* aTree = initAST(NULL);
+    while (currentProgramListCounter < programListSize) {
+        if (onOperatorToken() || isCurrentToken(NUM))
+            addChild(aTree, sExpression(0));
+        scan();
     }
-    addToProgramList(programList, createSingleCharacterLexeme(' '), NONE, lineNo ,ENDOFFILE);
+    return aTree;
 }
 
 // Parser utility
 
-void scan() {
-    currentProgramListCounter++;
+void scan() { 
+    currentProgramListCounter++; 
 }
 
 // Parser utility
@@ -215,40 +244,70 @@ void expect(enum Tokens token) {
 // CODE FOR EXPRESSION EVALUATION
 ////////////////////////////////////////////////////////////////
 
+//Stack to aid sExpression
+
 struct ASTStack {
     long size;
     struct AST * stack[AST_STACKCAP];
 };
 
-static void push (struct ASTStack * stack, struct AST* aTree) {
-    if (AST_STACKCAP == stack->size) {
-        puts("STACK OVERFLOW FROM LARGE EXPRESSION");
-        exit(1);
-    }
+// Function for the stacks in sExpression
+
+static void push(struct ASTStack * stack, struct AST* aTree) {
+    if (AST_STACKCAP == stack->size)
+        FATAL_ERROR(
+            LANGUAGE,
+            "STACK OVERFLOW FROM OVERLY LARGE EXPRESSION",
+            getCurrentLine()
+        );
     stack->stack[stack->size] = aTree;
     stack->size++;
 }
 
-static struct AST* pop (struct ASTStack * stack) {
-    if (0 == stack->size){
-        puts("Cannot pop empty stack!");
-        exit(1);
-    }
+// Function for the stacks in sExpression
+
+static struct AST* pop(struct ASTStack * stack) {
+    if (0 == stack->size)
+        FATAL_ERROR(
+            LANGUAGE,
+            "EXPRESSION PARSER TRIED TO POP A STACK WITH NOTHING IN IT",
+            getCurrentLine()
+        );
     stack->size--;
     return stack->stack[stack->size];
 }
 
-static struct AST* peek (struct ASTStack * stack) {
-    if (stack->size == 0) {
-        puts("ERROR:: dont peek an empty stack");
-        exit(1);
-    }
+// Function for the stacks in sExpression
+
+static struct AST* peek(struct ASTStack * stack) {
+    if (stack->size == 0)
+        FATAL_ERROR(
+            LANGUAGE,
+            "EXPRESSION PARSER TRIED TO PEEK INTO AN EMPTY STACK",
+            getCurrentLine()
+        );
     return stack->stack[stack->size - 1];
 }
+
+// This is to assist the Expression parsing algorithm
 
 enum Tokens getOperatorPrecedenceFromASTNode(struct AST* node) {
     return node->token->token;
 }
+
+/*
+
+    This is for handling expressions like 12 / 3 / 4.
+    In some case the main algorithim will cause the
+    expression to be executed backwards which means
+    the 3/4 will be computed first leaving the
+    exression as 12/.75 which incorrectly evaluates to
+    16. The right most division is replaced by a
+    multiplication like this: 12 / 3 * 4. That way,
+    when it is evaluated from right to left it
+    correctly outputs 1.
+
+*/
 
 void nonAssociativeTypeFlipper(struct AST* currentTree, struct AST* nextTree) {
     enum Tokens nextPrecedence = getOperatorPrecedenceFromASTNode(nextTree);
@@ -259,6 +318,8 @@ void nonAssociativeTypeFlipper(struct AST* currentTree, struct AST* nextTree) {
         currentTree->token->token = currentTree->token->token == ADD ? SUBTRACT : ADD;
 }
 
+// Helper for sExpression
+
 void createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(
     struct ASTStack* operandStack, 
     struct ASTStack* operatorStack
@@ -267,7 +328,6 @@ void createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(
     struct AST * operand1 = pop(operandStack);
     int savePrecedence = getOperatorPrecedenceFromASTNode(peek(operatorStack));
     struct AST* operatorHold = pop(operatorStack);
-    /* EDGE CASE */
     if (operatorStack->size > 0)
         nonAssociativeTypeFlipper(operatorHold, peek(operatorStack));
     addChild(operatorHold, operand1);
@@ -275,17 +335,17 @@ void createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(
     push(operandStack, operatorHold);
 }
 
-struct AST * sExpression() {
+// Main algorithm for parsing expressions. Similar to shunting yard.
 
+struct AST * sExpression() {
     struct ASTStack operatorStack;
     operatorStack.size = 0;
     struct ASTStack operandStack;
     operandStack.size = 0;
-
     while (1) {
         printf("%s ", getCurrentTokenStruct()->lexeme);
         if (!onOperandToken())
-            ERROR((enum ErrorType)PARSE, "Malformed expression", getCurrentLine());
+            FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
         if (isCurrentToken(LEFTPARENTH)){
             scan();
             push(&operatorStack, sExpression());
@@ -295,47 +355,26 @@ struct AST * sExpression() {
             scan();
         } else if (onExpressionBreaker()) 
             break;
-
         printf("%s ", getCurrentTokenStruct()->lexeme);
         if (onOperatorToken()) {
             struct AST* opTree = initAST(getCurrentTokenStruct());
             //WHILE THE TOP OPERATOR ON THE TOP OF THE STACK HAS HIGHER PRECEDENCE THAN THE CURRENT OPERATOR
-            while ( operatorStack.size != 0 && 
-                    getOperatorPrecedenceFromASTNode(peek(&operatorStack)) 
-                    > getOperatorPrecedenceFromASTNode(opTree)
-                ) 
+            while (operatorStack.size != 0 
+            && getOperatorPrecedenceFromASTNode(peek(&operatorStack)) > getOperatorPrecedenceFromASTNode(opTree)) 
                 createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(&operandStack, &operatorStack);
             push(&operatorStack, opTree);
             scan();
         } else if (onExpressionBreaker()){
             break;
         } else {
-            ERROR((enum ErrorType)PARSE, "Malformed expression", getCurrentLine());
+            FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
         }   
     }
     if (operandStack.size < 1) 
-        ERROR((enum ErrorType)PARSE, "Malformed expression", getCurrentLine());
+        FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
     while (operandStack.size != 1)
         createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(&operandStack, &operatorStack);
     return pop(&operandStack);
 }
 
-/*
 
-    Main parse function. This begins the recursive
-    decent and returns a pointer to the root of the
-    Abstract Syntax Tree for the codegen stage.
-
-*/
-
-struct AST* parse() {
-    currentProgramListCounter = 0;
-    struct AST* aTree = initAST(NULL);
-    while (currentProgramListCounter < programListSize) {
-        if (onOperatorToken() || isCurrentToken(NUM)) {
-            addChild(aTree, sExpression(0));
-        }
-        scan();
-    }
-    return aTree;
-}
