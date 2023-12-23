@@ -82,7 +82,8 @@ void* push() {
         exit(EXIT_FAILURE);
     }
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
-    stack[stackSize] = fetchArg(&program[instructionIndex],0);
+    stack[stackSize] = fetchArg(&(program[instructionIndex]),0);
+    printf("Interpret wizarg %p\n", &stack[stackSize]);
     stackSize++;
     return NULL;
 }

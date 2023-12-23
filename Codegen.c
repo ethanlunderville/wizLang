@@ -12,6 +12,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "Interpreter.h"
 #include "AST.h"
 #include "Mem.h"
@@ -54,7 +55,7 @@ struct wizObject * wizSlab;
 
 // Constructor for the opCode that ensures it will be correctly laid out in memory
 
-struct opCode * programAdder(int numArgs, ByteCodeFunctionPtr op) {
+struct opCode * programAdder(ByteCodeFunctionPtr op) {
     if (programSize == 0) {
         program = INIT_ARRAY(struct opCode);
         programCapacity = BASE_CAPACITY;
@@ -67,8 +68,9 @@ struct opCode * programAdder(int numArgs, ByteCodeFunctionPtr op) {
             programCapacity
         );
     }
-    program[programSize].argNum = numArgs;
     program[programSize].associatedOperation = op;
+    program[programSize].currentIndex = 0;
+    memset(program[programSize].argIndexes,0,5);
     programSize++;
     return &program[programSize-1];
 }
@@ -88,6 +90,7 @@ long initWizArg(union TypeStore val, enum Types type) {
             wizSlabCapacity
         );
     }
+    printf("Codegen wizarg %p\n", &wizSlab[wizSlabSize]);
     wizSlab[wizSlabSize].value = val;
     wizSlab[wizSlabSize].type = type;
     wizSlabSize++;
@@ -98,7 +101,7 @@ long initWizArg(union TypeStore val, enum Types type) {
 // See the opCode struct in Interpreter.h for more clarity
 
 void addArg(struct opCode * oCode, long wizIndex) {
-    if (oCode->currentIndex == oCode->argNum) {
+    if (oCode->currentIndex == OPCODE_ARGLIMIT) {
         puts("ArgCount error: Too many args");
         exit(1);
     }
@@ -133,10 +136,7 @@ void codeGenWalker(struct AST * aTree) {
             {
             union TypeStore value;
             value.numValue = atof(aTree->token->lexeme); 
-            addArg(
-                programAdder(1, push),
-                initWizArg(value, NUMBER)
-            );
+            addArg(programAdder(push), initWizArg(value, NUMBER));
             break;
             }
         case BINOP:
@@ -145,10 +145,7 @@ void codeGenWalker(struct AST * aTree) {
                 codeGenWalker(aTree->children[i]); 
             union TypeStore value;
             value.opValue = aTree->token->token;
-            addArg(
-                programAdder(1, binOpCode), 
-                initWizArg(value, BINOP)
-            );
+            addArg(programAdder(binOpCode), initWizArg(value, BINOP));
             break;
             }
         default:

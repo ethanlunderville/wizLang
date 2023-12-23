@@ -14,6 +14,8 @@
 
 #include "Keywords.h"
 
+#define OPCODE_ARGLIMIT 5
+
 struct TokenStruct;
 struct AST;
 
@@ -34,9 +36,8 @@ struct wizObject {
 };
 
 struct opCode {
-    int argNum;
     int currentIndex;
-    int argIndexes[5];
+    long argIndexes[OPCODE_ARGLIMIT];
     ByteCodeFunctionPtr associatedOperation;
 };
 

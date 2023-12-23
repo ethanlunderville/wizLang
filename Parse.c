@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <assert.h>
+#include "Error.h"
 #include "Parse.h"
 
 struct TokenStruct * programList;
@@ -141,6 +142,12 @@ struct TokenStruct* getCurrentTokenStruct() {
 
 // Parser utility
 
+long getCurrentLine() {
+    return getCurrentTokenStruct()->line;
+}
+
+// Parser utility
+
 bool isCurrentToken(enum Tokens token) {
     if (programListSize <= currentProgramListCounter)
         return false;
@@ -204,7 +211,9 @@ void expect(enum Tokens token) {
     scan();
 }
 
-#define AST_STACKCAP 50
+////////////////////////////////////////////////////////////////
+// CODE FOR EXPRESSION EVALUATION
+////////////////////////////////////////////////////////////////
 
 struct ASTStack {
     long size;
@@ -230,29 +239,53 @@ static struct AST* pop (struct ASTStack * stack) {
 }
 
 static struct AST* peek (struct ASTStack * stack) {
+    if (stack->size == 0) {
+        puts("ERROR:: dont peek an empty stack");
+        exit(1);
+    }
     return stack->stack[stack->size - 1];
+}
+
+enum Tokens getOperatorPrecedenceFromASTNode(struct AST* node) {
+    return node->token->token;
+}
+
+void nonAssociativeTypeFlipper(struct AST* currentTree, struct AST* nextTree) {
+    enum Tokens nextPrecedence = getOperatorPrecedenceFromASTNode(nextTree);
+    enum Tokens currentPrecedence = getOperatorPrecedenceFromASTNode(currentTree);
+    if (nextPrecedence == DIVIDE && (currentPrecedence == MULTIPLY ||currentPrecedence == DIVIDE ))
+        currentTree->token->token = currentTree->token->token == MULTIPLY ? DIVIDE : MULTIPLY;
+    if (nextPrecedence == SUBTRACT && (currentPrecedence == SUBTRACT ||currentPrecedence == ADD ))
+        currentTree->token->token = currentTree->token->token == ADD ? SUBTRACT : ADD;
+}
+
+void createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(
+    struct ASTStack* operandStack, 
+    struct ASTStack* operatorStack
+) {
+    struct AST * operand2 = pop(operandStack); 
+    struct AST * operand1 = pop(operandStack);
+    int savePrecedence = getOperatorPrecedenceFromASTNode(peek(operatorStack));
+    struct AST* operatorHold = pop(operatorStack);
+    /* EDGE CASE */
+    if (operatorStack->size > 0)
+        nonAssociativeTypeFlipper(operatorHold, peek(operatorStack));
+    addChild(operatorHold, operand1);
+    addChild(operatorHold, operand2); 
+    push(operandStack, operatorHold);
 }
 
 struct AST * sExpression() {
 
-    struct AST* aTree = initAST(NULL);
     struct ASTStack operatorStack;
     operatorStack.size = 0;
     struct ASTStack operandStack;
     operandStack.size = 0;
 
-    struct TokenStruct trash;
-    trash.token = JUNK;
-    struct AST* bottom = initAST(&trash);
-
-    push(&operatorStack,bottom);
-
     while (1) {
         printf("%s ", getCurrentTokenStruct()->lexeme);
-        if (!onOperandToken()) {
-            puts("Malformed expression");
-            exit(1);
-        }
+        if (!onOperandToken())
+            ERROR((enum ErrorType)PARSE, "Malformed expression", getCurrentLine());
         if (isCurrentToken(LEFTPARENTH)){
             scan();
             push(&operatorStack, sExpression());
@@ -260,54 +293,31 @@ struct AST * sExpression() {
         } else if (onData()) {
             push(&operandStack, initAST(getCurrentTokenStruct()));
             scan();
-        } else if (onExpressionBreaker()){
+        } else if (onExpressionBreaker()) 
             break;
-        }
+
         printf("%s ", getCurrentTokenStruct()->lexeme);
         if (onOperatorToken()) {
             struct AST* opTree = initAST(getCurrentTokenStruct());
-            if (peek(&operatorStack)->token->token > opTree->token->token) {
-                int target = opTree->token->token;
-                while (peek(&operatorStack)->token->token > target) {
-                    struct AST * operand2 = pop(&operandStack); 
-                    struct AST * operand1 = pop(&operandStack);
-                    int savePrecedence = peek(&operatorStack)->token->token;
-                    struct AST* operatorHold = pop(&operatorStack);
-                    /* EDGE CASE */
-                    //nonAssociativeTypeFlipper( operatorHold, operatorStack.top(), savePrecedence);
-                    addChild(operatorHold, operand1);
-                    addChild(operatorHold, operand2); 
-                    push(&operandStack, operatorHold);
-                }
-            }
+            //WHILE THE TOP OPERATOR ON THE TOP OF THE STACK HAS HIGHER PRECEDENCE THAN THE CURRENT OPERATOR
+            while ( operatorStack.size != 0 && 
+                    getOperatorPrecedenceFromASTNode(peek(&operatorStack)) 
+                    > getOperatorPrecedenceFromASTNode(opTree)
+                ) 
+                createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(&operandStack, &operatorStack);
             push(&operatorStack, opTree);
             scan();
         } else if (onExpressionBreaker()){
             break;
-        } else { 
-            puts("Malformed expression");
-            exit(1);
-        }
+        } else {
+            ERROR((enum ErrorType)PARSE, "Malformed expression", getCurrentLine());
+        }   
     }
-    if (operandStack.size < 1) {
-        puts("Malformed expression");
-        exit(1);
-    }
-    while (operandStack.size != 1) {
-        struct AST * operand2 = pop(&operandStack); 
-        struct AST * operand1 = pop(&operandStack);
-        int savePrecedence = peek(&operatorStack)->token->token;
-        struct AST* operatorHold = pop(&operatorStack);
-        /* EDGE CASE */
-        //nonAssociativeTypeFlipper( operatorHold, operatorStack.top(), savePrecedence);
-        addChild(operatorHold, operand1);
-        addChild(operatorHold, operand2); 
-        push(&operandStack, operatorHold);
-    }
-    struct AST * re = pop(&operandStack);
-    //addChild(aTree,pop(&operandStack));
-    pop(&operatorStack);
-    return re;
+    if (operandStack.size < 1) 
+        ERROR((enum ErrorType)PARSE, "Malformed expression", getCurrentLine());
+    while (operandStack.size != 1)
+        createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(&operandStack, &operatorStack);
+    return pop(&operandStack);
 }
 
 /*

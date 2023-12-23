@@ -15,6 +15,8 @@
 #include <stdbool.h>
 #include "AST.h"
 
+#define AST_STACKCAP 50
+
 char* createSingleCharacterLexeme(char c);
 char* createNumberLexeme(long * bufferIndex, char * buffer);
 void addToProgramList(struct TokenStruct * pList, char * lexeme, enum Types type ,long lineNo, enum Tokens token);

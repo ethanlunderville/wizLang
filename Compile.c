@@ -56,6 +56,7 @@ char* fileToBuffer(char * fileName) {
 
 int main () {
     char* buffer = fileToBuffer("test.p"); 
+    setErrorFile(buffer);
     printf("File content:\n%s\n\n", buffer);
     /* LEXING STAGE */
     lex(buffer, programList);
