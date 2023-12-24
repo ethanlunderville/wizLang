@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -g
-SRC = Compile.c AST.c Parse.c Interpreter.c Codegen.c -lm
+SRC = Compile.c AST.c Parse.c Interpreter.c Codegen.c Error.c -lm
 OUT = a.out
 
 .PHONY: all run debug vrun clean

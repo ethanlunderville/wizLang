@@ -21,12 +21,13 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <assert.h>
-#include "Error.h"
 #include "Parse.h"
+#include "Error.h"
 
-struct TokenStruct * programList; // Series of tokens representing the source program
+struct TokenStruct * programList; // Series of tokens representing the source program.
 long currentProgramListCounter = 0;
 long programListSize = 0;
+long programListCapacity = BASE_PROGRAM_LIST_SIZE;
 
 ////////////////////////////////////////////////////////////////
 // LEXING RELATED FUNCTIONS
@@ -39,7 +40,7 @@ long programListSize = 0;
     Description:
 
     Main function to perform lexical analysis. Tokens
-    are stored in the program list for the parser
+    are stored in the program list for the parser.
 
 */
 
@@ -92,7 +93,7 @@ char* createNumberLexeme(long * bufferIndex, char * buffer) {
     return lexeme;
 }
 
-// Adds a token to the list that the lexer outputs for the parser
+// Adds a token to the list that the lexer outputs for the parser.
 
 void addToProgramList(
     char * lexeme,
@@ -100,6 +101,10 @@ void addToProgramList(
     long lineNo,
     enum Tokens token
 ) {
+    if (programListSize == programListCapacity - 1) {
+        programListCapacity *= 2;
+        programList = realloc(programList, programListCapacity);
+    }
     programList[currentProgramListCounter].token = token;
     programList[currentProgramListCounter].lexeme = lexeme; 
     programList[currentProgramListCounter].line = lineNo;
@@ -114,7 +119,7 @@ void printLexemes (struct TokenStruct * programList, long size) {
     for (long i = 0; i < size ; ++i)
         printf(
             "%li) TOKEN:: %i, LEXEME:: %s\n", 
-            i,
+            i+1,
             programList[i].token, 
             programList[i].lexeme
         );
@@ -244,14 +249,14 @@ void expect(enum Tokens token) {
 // CODE FOR EXPRESSION EVALUATION
 ////////////////////////////////////////////////////////////////
 
-//Stack to aid sExpression
+//Stack to aid sExpression.
 
 struct ASTStack {
     long size;
     struct AST * stack[AST_STACKCAP];
 };
 
-// Function for the stacks in sExpression
+// Function for the stacks in sExpression.
 
 static void push(struct ASTStack * stack, struct AST* aTree) {
     if (AST_STACKCAP == stack->size)
@@ -264,7 +269,7 @@ static void push(struct ASTStack * stack, struct AST* aTree) {
     stack->size++;
 }
 
-// Function for the stacks in sExpression
+// Function for the stacks in sExpression.
 
 static struct AST* pop(struct ASTStack * stack) {
     if (0 == stack->size)
@@ -277,7 +282,7 @@ static struct AST* pop(struct ASTStack * stack) {
     return stack->stack[stack->size];
 }
 
-// Function for the stacks in sExpression
+// Function for the stacks in sExpression.
 
 static struct AST* peek(struct ASTStack * stack) {
     if (stack->size == 0)
@@ -289,7 +294,7 @@ static struct AST* peek(struct ASTStack * stack) {
     return stack->stack[stack->size - 1];
 }
 
-// This is to assist the Expression parsing algorithm
+// This is to assist the Expression parsing algorithm.
 
 enum Tokens getOperatorPrecedenceFromASTNode(struct AST* node) {
     return node->token->token;
@@ -318,7 +323,7 @@ void nonAssociativeTypeFlipper(struct AST* currentTree, struct AST* nextTree) {
         currentTree->token->token = currentTree->token->token == ADD ? SUBTRACT : ADD;
 }
 
-// Helper for sExpression
+// Helper for sExpression.
 
 void createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(
     struct ASTStack* operandStack, 
@@ -348,13 +353,14 @@ struct AST * sExpression() {
             FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
         if (isCurrentToken(LEFTPARENTH)){
             scan();
-            push(&operatorStack, sExpression());
+            push(&operandStack, sExpression());
             expect(RIGHTPARENTH);
         } else if (onData()) {
             push(&operandStack, initAST(getCurrentTokenStruct()));
             scan();
-        } else if (onExpressionBreaker()) 
+        } else if (onExpressionBreaker()) { 
             break;
+        }
         printf("%s ", getCurrentTokenStruct()->lexeme);
         if (onOperatorToken()) {
             struct AST* opTree = initAST(getCurrentTokenStruct());
@@ -370,6 +376,7 @@ struct AST * sExpression() {
             FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
         }   
     }
+    puts("");
     if (operandStack.size < 1) 
         FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
     while (operandStack.size != 1)

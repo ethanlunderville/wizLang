@@ -18,6 +18,7 @@
 #include <assert.h>
 #include "Parse.h"
 #include "Interpreter.h"
+#include "Error.h"
 
 extern long programListSize;
 extern struct TokenStruct * programList;
@@ -47,7 +48,7 @@ char* fileToBuffer(char * fileName) {
     }
     long fileSize = getFileSize(file);
     char *buffer = (char *) malloc(fileSize + 1);
-    programList = (struct TokenStruct *) malloc(sizeof(struct TokenStruct) * fileSize);
+    programList = (struct TokenStruct *) malloc((sizeof(struct TokenStruct) * BASE_PROGRAM_LIST_SIZE));
     buffer[fileSize] = '\0';
     fread(buffer, 1, fileSize, file);
     fclose(file);
@@ -56,7 +57,7 @@ char* fileToBuffer(char * fileName) {
 
 int main () {
     char* buffer = fileToBuffer("test.p"); 
-    setErrorFile(buffer);
+    //setErrorFile(buffer);
     printf("File content:\n%s\n\n", buffer);
     /* LEXING STAGE */
     lex(buffer, programList);
@@ -68,7 +69,10 @@ int main () {
     puts("*** PRINTING AST ***");
     printAST(aTree);
     puts("*** FINISHED PRINTING AST ***");
+    puts("*** STARTING CODEGEN ***");
     codeGen(aTree);
+    puts("*** ENDING CODEGEN ***");
+    puts("*** PROGRAM OUTPUT ***");
     interpret();
     deallocateAST(aTree);
     freeProgramList(programList, programListSize);

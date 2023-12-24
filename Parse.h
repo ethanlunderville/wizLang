@@ -16,6 +16,7 @@
 #include "AST.h"
 
 #define AST_STACKCAP 50
+#define BASE_PROGRAM_LIST_SIZE 10000
 
 char* createSingleCharacterLexeme(char c);
 char* createNumberLexeme(long * bufferIndex, char * buffer);

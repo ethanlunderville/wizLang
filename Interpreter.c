@@ -31,7 +31,7 @@ extern struct wizObject * wizSlab;
 struct wizObject* stack[STACK_LIMIT];
 int stackSize = 0;
 
-// Approaches program size as the program executes
+// Approaches program size as the program executes.
 long instructionIndex = 0;
 
 /*
@@ -47,7 +47,7 @@ struct wizObject * fetchArg (struct opCode * op, int argNum) {
     return &wizSlab[op->argIndexes[argNum]];
 }
 
-// Stack dumper for debugging
+// Stack dumper for debugging.
 
 void dumpStack() {
     puts("|---------Dump-----------|");
@@ -70,7 +70,7 @@ void dumpStack() {
     }    
 }
 
-// Pops a value off of the Runtime Stack
+// Pops a value off of the Runtime Stack.
 
 struct wizObject* pop() {
     if (stackSize == 0) {
@@ -83,7 +83,7 @@ struct wizObject* pop() {
     return element;
 }
 
-// Pushes a value onto the Runtime Stack
+// Pushes a value onto the Runtime Stack.
 
 void* push() {
     if (stackSize == STACK_LIMIT) {
@@ -96,49 +96,25 @@ void* push() {
     return NULL;
 }
 
-// Handles binary operations
+// Handles binary operations.
+
+#define OP_EXECUTION_MACRO(op) \
+            rightHand = pop()->value.numValue; \
+            fetchArg(&program[instructionIndex],0)->value.numValue = ( \
+                pop()->value.numValue op rightHand \
+            ); \
+            fetchArg(&program[instructionIndex],0)->type = NUMBER; \
+            push(); \
+            break;
 
 void* binOpCode() {
     enum Tokens operation = fetchArg(&program[instructionIndex],0)->value.opValue;
+    double rightHand;
     switch (operation) {
-        case ADD:
-        {
-            fetchArg(&program[instructionIndex],0)->value.numValue = (
-                pop()->value.numValue + pop()->value.numValue
-            );
-            fetchArg(&program[instructionIndex],0)->type = NUMBER;
-            push();
-            break;
-        }
-        case SUBTRACT:
-        {
-            double rightHand = pop()->value.numValue;
-            fetchArg(&program[instructionIndex],0)->value.numValue = (
-                pop()->value.numValue - rightHand
-            );
-            fetchArg(&program[instructionIndex],0)->type = NUMBER;
-            push();
-            break;
-        }
-        case MULTIPLY:
-        {
-            fetchArg(&program[instructionIndex],0)->value.numValue = (
-                pop()->value.numValue * pop()->value.numValue
-            );
-            fetchArg(&program[instructionIndex],0)->type = NUMBER;
-            push();
-            break;
-        }
-        case DIVIDE:
-        {
-            double rightHand = pop()->value.numValue;
-            fetchArg(&program[instructionIndex],0)->value.numValue = (
-                pop()->value.numValue / rightHand
-            );
-            fetchArg(&program[instructionIndex],0)->type = NUMBER;
-            push();
-            break;
-        }
+        case ADD: OP_EXECUTION_MACRO(+);
+        case SUBTRACT: OP_EXECUTION_MACRO(-);
+        case MULTIPLY: OP_EXECUTION_MACRO(*);
+        case DIVIDE: OP_EXECUTION_MACRO(/);
         case POWER:
         {
             double rightHand = pop()->value.numValue;

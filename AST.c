@@ -43,14 +43,9 @@ void printAST(struct AST* ast){
 // Adds a child to an AST nodes list of children dynamically.
 
 void addChild(struct AST* tree, struct AST* child) {
-    if (tree->childLimit == 0) {
-        tree->childLimit = BASECHILDNUMBER;
-        tree->children = (struct AST**) malloc(sizeof(struct AST**) * tree->childLimit);
-    } else if (tree->childCount == tree->childLimit) {
-        int newLimit = tree->childLimit*2;
-        struct AST** newBuff = (struct AST**) malloc(sizeof(struct AST**) * newLimit);
-        memcpy(newBuff, tree->children, tree->childLimit);
-        tree->childLimit = newLimit;
+    if (tree->childCount == tree->childLimit - 1) {
+        tree->children = realloc(tree->children, tree->childLimit*2);
+        tree->childLimit = tree->childLimit*2;
     } 
     tree->children[tree->childCount] = child;
     tree->childCount++;
@@ -60,6 +55,8 @@ void addChild(struct AST* tree, struct AST* child) {
 
 struct AST* initAST(struct TokenStruct * token) {
     struct AST* node = (struct AST*) malloc(sizeof(struct AST));
+    node->childLimit = BASECHILDNUMBER;
+    node->children = (struct AST**) malloc(sizeof(struct AST**) * node->childLimit);
     node->childCount = 0;
     node->childLimit = 0;
     node->token = token;

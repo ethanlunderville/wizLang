@@ -60,7 +60,7 @@ struct opCode * programAdder(ByteCodeFunctionPtr op) {
         program = INIT_ARRAY(struct opCode);
         programCapacity = BASE_CAPACITY;
     }
-    if (programSize == programCapacity) {
+    if (programSize == programCapacity - 1) {
         programCapacity = GROW_CAPACITY(programCapacity);
         program = GROW_ARRAY(
             struct opCode, 
@@ -92,7 +92,7 @@ long initWizArg(union TypeStore val, enum Types type) {
         wizSlab = INIT_ARRAY(struct wizObject);
         wizSlabCapacity = BASE_CAPACITY;
     }
-    if (wizSlabSize == wizSlabCapacity) {
+    if (wizSlabSize == wizSlabCapacity - 1) {
         wizSlabCapacity = GROW_CAPACITY(wizSlabCapacity);
         wizSlab = GROW_ARRAY(
             struct wizObject, 
@@ -107,7 +107,7 @@ long initWizArg(union TypeStore val, enum Types type) {
 }
 
 // Adds an argument to the opCode. 
-// See the opCode struct in Interpreter.h for more clarity
+// See the opCode struct in Interpreter.h for more clarity.
 
 void addArg(struct opCode * oCode, long wizIndex) {
     if (oCode->currentIndex == OPCODE_ARGLIMIT) {
@@ -118,11 +118,24 @@ void addArg(struct opCode * oCode, long wizIndex) {
     oCode->currentIndex++;
 }
 
-// Function that the Compiler.c file calls to kick off codeGen stage
+// Function that the Compiler.c file calls to kick off codeGen stage.
 
 struct opCode * codeGen(struct AST * aTree) {
     codeGenWalker(aTree);
     return program;
+}
+
+void printCodes() {
+    for (long i = 0 ; i < programSize ; i++) {
+        if(program[i].associatedOperation == push)
+            printf("PUSH :: ");
+        if(program[i].associatedOperation == binOpCode)
+            printf("BINOP :: ");
+        printf("ARGS ->");
+        //for (int j = 0 ; j < program[i].currentIndex; j++) 
+        //    printf("", wizSlab[program[i].argIndexes[j]]);
+        puts("");
+    }
 }
 
 /*
@@ -164,5 +177,6 @@ void codeGenWalker(struct AST * aTree) {
         default:
             break;
     }
+
     return;
 }
