@@ -21,9 +21,22 @@
 */
 
 enum Tokens {
-    JUNK,
     /*BEGIN OPERATORS*/
     BEGINOPERATORS,
+
+    ASSIGNMENT,
+    PIPE,
+    
+    EQUAL,
+    NOTEQUAL,
+
+    LESSTHAN,
+    GREATERTHAN,
+    GREATEREQUAL,
+    LESSEQUAL,
+    AND,
+    OR,
+
     ADD,
     SUBTRACT,
     MULTIPLY,
@@ -45,6 +58,9 @@ enum Tokens {
     ENDLINE,
     ENDOFFILE
 };
+
+const char* getTokenName(enum Tokens token);
+
 
 enum Types {
     NUMBER,

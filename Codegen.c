@@ -125,19 +125,6 @@ struct opCode * codeGen(struct AST * aTree) {
     return program;
 }
 
-void printCodes() {
-    for (long i = 0 ; i < programSize ; i++) {
-        if(program[i].associatedOperation == push)
-            printf("PUSH :: ");
-        if(program[i].associatedOperation == binOpCode)
-            printf("BINOP :: ");
-        printf("ARGS ->");
-        //for (int j = 0 ; j < program[i].currentIndex; j++) 
-        //    printf("", wizSlab[program[i].argIndexes[j]]);
-        puts("");
-    }
-}
-
 /*
 
     Code Generator: Stage 3
@@ -163,6 +150,13 @@ void codeGenWalker(struct AST * aTree) {
             union TypeStore value;
             value.numValue = atof(aTree->token->lexeme); 
             addArg(programAdder(push), initWizArg(value, NUMBER));
+            break;
+            }
+        case STRINGTYPE:
+            {
+            union TypeStore value;
+            value.strValue = aTree->token->lexeme;
+            addArg(programAdder(push), initWizArg(value, STRINGTYPE));
             break;
             }
         case BINOP:

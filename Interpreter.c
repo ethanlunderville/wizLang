@@ -111,7 +111,19 @@ void* binOpCode() {
     enum Tokens operation = fetchArg(&program[instructionIndex],0)->value.opValue;
     double rightHand;
     switch (operation) {
-        case ADD: OP_EXECUTION_MACRO(+);
+        case ADD: 
+        {   
+            if (0) {
+
+            } else if (0) {
+
+            } else if (0) {
+
+            } else if (0) {
+
+            }
+            OP_EXECUTION_MACRO(+)
+        }
         case SUBTRACT: OP_EXECUTION_MACRO(-);
         case MULTIPLY: OP_EXECUTION_MACRO(*);
         case DIVIDE: OP_EXECUTION_MACRO(/);
@@ -123,10 +135,17 @@ void* binOpCode() {
             push();
             break;
         }
-        default:
-        {
-            break;
-        }
+        case OR: OP_EXECUTION_MACRO(||);
+        case AND: OP_EXECUTION_MACRO(&&);
+        case LESSEQUAL: OP_EXECUTION_MACRO(<=);
+        case GREATEREQUAL: OP_EXECUTION_MACRO(>=);
+        case GREATERTHAN: OP_EXECUTION_MACRO(>);
+        case LESSTHAN: OP_EXECUTION_MACRO(<);
+        case NOTEQUAL: OP_EXECUTION_MACRO(!=);
+        case EQUAL: OP_EXECUTION_MACRO(==);
+        case PIPE: {break;}
+        case ASSIGNMENT: {break;};
+        default: break;
     }
     
     return NULL;

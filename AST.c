@@ -25,14 +25,12 @@ int indentationCount = 0; // For printing tree
 */
 
 void printAST(struct AST* ast){
-    for (int i = 0 ; i < indentationCount ; i++) {
+    for (int i = 0 ; i < indentationCount ; i++)
         printf(" ");
-    }
-    if (ast->token == NULL) {
+    if (ast->token == NULL) 
         puts("<NOINFO>");
-    } else {
+    else 
         printf("%s : %p\n",ast->token->lexeme, ast);
-    }
     for (int i = 0 ; i < ast->childCount ; i++) {
         indentationCount += TREEINDENT;
         printAST(ast->children[i]);

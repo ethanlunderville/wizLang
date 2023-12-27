@@ -33,6 +33,43 @@ long programListCapacity = BASE_PROGRAM_LIST_SIZE;
 // LEXING RELATED FUNCTIONS
 ////////////////////////////////////////////////////////////////
 
+const char* getTokenName(enum Tokens token) {
+    switch (token) {
+        case BEGINOPERATORS: return "BEGINOPERATORS";
+        case ASSIGNMENT: return "ASSIGNMENT";
+        case PIPE: return "PIPE";
+        case EQUAL: return "EQUAL";
+        case NOTEQUAL: return "NOTEQUAL";
+        case LESSTHAN: return "LESSTHAN";
+        case GREATERTHAN: return "GREATERTHAN";
+        case GREATEREQUAL: return "GREATEREQUAL";
+        case LESSEQUAL: return "LESSEQUAL";
+        case AND: return "AND";
+        case OR: return "OR";
+        case ADD: return "ADD";
+        case SUBTRACT: return "SUBTRACT";
+        case MULTIPLY: return "MULTIPLY";
+        case DIVIDE: return "DIVIDE";
+        case POWER: return "POWER";
+        case BEGINOPERANDS: return "BEGINOPERANDS";
+        case LEFTPARENTH: return "LEFTPARENTH";
+        case ENDOPERATORS: return "ENDOPERATORS";
+        case RIGHTPARENTH: return "RIGHTPARENTH";
+        case NUM: return "NUM";
+        case STRING: return "STRING";
+        case IDENTIFIER: return "IDENTIFIER";
+        case ENDOPERANDS: return "ENDOPERANDS";
+        case COMMA: return "COMMA";
+        case ENDLINE: return "ENDLINE";
+        case ENDOFFILE: return "ENDOFFILE";
+        default: return "Token not found";
+    }
+}
+
+char checkNext(char* buffer, long index, char c) {
+    return c == buffer[index+1];
+}
+
 /*
 
     Lexer: STAGE 1
@@ -44,42 +81,7 @@ long programListCapacity = BASE_PROGRAM_LIST_SIZE;
 
 */
 
-void lex(char* buffer, struct TokenStruct * programList) {
-    long lineNo = 1;
-    for (long i = 0; i < strlen(buffer); ++i) {
-        switch (buffer[i]) 
-        {
-        case ' ':
-        case '\r':
-        case '\t':
-            break;
-        case ',': addToProgramList(createSingleCharacterLexeme(','), NONE, lineNo ,COMMA); break;
-        case '+': addToProgramList(createSingleCharacterLexeme('+'), BINOP, lineNo ,ADD); break;
-        case '-': addToProgramList(createSingleCharacterLexeme('-'), BINOP, lineNo ,SUBTRACT); break;
-        case '*': addToProgramList(createSingleCharacterLexeme('*'), BINOP, lineNo ,MULTIPLY); break;
-        case '/': addToProgramList(createSingleCharacterLexeme('/'), BINOP, lineNo ,DIVIDE); break;
-        case '^': addToProgramList(createSingleCharacterLexeme('^'), BINOP, lineNo ,POWER); break;
-        case '(': addToProgramList(createSingleCharacterLexeme('('), OP, lineNo ,LEFTPARENTH); break;
-        case ')': addToProgramList(createSingleCharacterLexeme(')'), OP, lineNo ,RIGHTPARENTH); break; 
-        case '\n': addToProgramList(createSingleCharacterLexeme('\n'), NONE, lineNo ,ENDLINE); lineNo++; break;   
-        default:
-            if (isdigit(buffer[i])) 
-                addToProgramList(createNumberLexeme(&i, buffer), NUMBER, lineNo ,NUM);
-        }
-    }
-    addToProgramList(createSingleCharacterLexeme(' '), NONE, lineNo ,ENDOFFILE);
-}
-
-// Allocates space and returns lexemes of a single character.
-
-char* createSingleCharacterLexeme(char c) {
-    char* lexeme = (char*) malloc(2);
-    lexeme[0] = c;
-    lexeme[1] = '\0';
-    return lexeme;
-}
-
-// Allocates space and returns a number lexeme.
+// Allocates space for and returns a number lexeme.
 
 char* createNumberLexeme(long * bufferIndex, char * buffer) {
     long currentIndex = *bufferIndex;
@@ -91,6 +93,113 @@ char* createNumberLexeme(long * bufferIndex, char * buffer) {
     lexeme[diff] = '\0';
     *bufferIndex = currentIndex - 1;
     return lexeme;
+}
+
+// Allocates space for and returns a string lexeme.
+
+char* createStringLexeme(long * bufferIndex, char * buffer) {
+    long currentIndex = *bufferIndex;
+    while (buffer[currentIndex] != '"' && buffer[currentIndex] != '\0')
+        currentIndex++;
+    long diff = currentIndex - *bufferIndex;
+    char* lexeme = (char*)malloc(diff+1);
+    memcpy(lexeme, buffer + (*bufferIndex), diff);
+    lexeme[diff] = '\0';
+    *bufferIndex = currentIndex;
+    return lexeme;
+}
+
+void lex(char* buffer, struct TokenStruct * programList) {
+    long lineNo = 1;
+    long buffSize = strlen(buffer);
+    for (long i = 0; i < buffSize; ++i) {
+        switch (buffer[i]) 
+        {
+        case ',': addToProgramList(",", NONE, lineNo ,COMMA); break;
+        case '+': addToProgramList("+", BINOP, lineNo ,ADD); break;
+        case '-': addToProgramList("-", BINOP, lineNo ,SUBTRACT); break;
+        case '*': addToProgramList("*", BINOP, lineNo ,MULTIPLY); break;
+        case '/': addToProgramList("/", BINOP, lineNo ,DIVIDE); break;
+        case '^': addToProgramList("^", BINOP, lineNo ,POWER); break;
+        case '(': addToProgramList("(", OP, lineNo ,LEFTPARENTH); break;
+        case ')': addToProgramList(")", OP, lineNo ,RIGHTPARENTH); break;
+        case '\n': {
+            addToProgramList("\n", NONE, lineNo ,ENDLINE); 
+            lineNo++; 
+            break;
+        } 
+        case '<': {
+            if (checkNext(buffer,i,'=')) {
+                i++;
+                addToProgramList("<=",BINOP,lineNo,LESSEQUAL);
+            } else {
+                addToProgramList("<",BINOP,lineNo,LESSTHAN);
+            }
+            break;
+        }
+        case '>': {
+            if (checkNext(buffer,i,'=')) {
+                i++;
+                addToProgramList(">=",BINOP,lineNo,GREATEREQUAL);
+            } else {
+                addToProgramList("<",BINOP,lineNo,GREATERTHAN);
+            }
+            break;
+        }
+        case '!': {
+            if (checkNext(buffer,i,'=')) {
+                addToProgramList("!=",BINOP,lineNo,NOTEQUAL);
+            }
+            else { 
+                ERROR(PARSE, "Expected = after !", lineNo);
+            }
+            break;
+        }
+        case '=': {
+            if (checkNext(buffer,i,'=')) {
+                i++;
+                addToProgramList("==",BINOP,lineNo,EQUAL);
+            } else {
+                addToProgramList("=", BINOP, lineNo, ASSIGNMENT);
+            }     
+            break;       
+        }
+        case '&': {
+            if (checkNext(buffer,i,'&')) {
+                i++;
+                addToProgramList("&&",BINOP,lineNo, AND);
+            } else {
+                ERROR(PARSE, "Expected & after &", lineNo);
+            }
+            break;
+        }
+        case '|': {
+            if (checkNext(buffer,i,'|')) {
+                i++;
+                addToProgramList("||",BINOP,lineNo,OR);
+            } else {
+                addToProgramList("|", BINOP, lineNo, PIPE);
+            } 
+            break;
+        }
+        case '"': {
+            i++; 
+            addToProgramList(createStringLexeme(&i, buffer), STRINGTYPE, lineNo ,STRING); 
+            break;
+        }
+        case ' ':
+        case '\r':
+        case '\t':
+            break;
+        default:
+            if (isdigit(buffer[i])) {
+                addToProgramList(createNumberLexeme(&i, buffer), NUMBER, lineNo ,NUM);
+            } else if (isalpha(buffer[i])) {
+                
+            }
+        }
+    }
+    addToProgramList("END", NONE, lineNo ,ENDOFFILE);
 }
 
 // Adds a token to the list that the lexer outputs for the parser.
@@ -118,9 +227,9 @@ void addToProgramList(
 void printLexemes (struct TokenStruct * programList, long size) {
     for (long i = 0; i < size ; ++i)
         printf(
-            "%li) TOKEN:: %i, LEXEME:: %s\n", 
+            "%li) TOKEN:: %s, LEXEME:: %s\n", 
             i+1,
-            programList[i].token, 
+            getTokenName(programList[i].token), 
             programList[i].lexeme
         );
 }
@@ -129,7 +238,13 @@ void printLexemes (struct TokenStruct * programList, long size) {
 
 void freeProgramList(struct TokenStruct * programList, long size) {
     for (long i = 0; i < size ; ++i) {
-        if (programList[i].lexeme != NULL) 
+        if (
+            programList[i].lexeme != NULL
+            /*SINCE THESE TYPES HAVE ARE MALLOCED*/
+            && programList[i].token == STRING
+            && programList[i].token == NUM
+            && programList[i].token == IDENTIFIER
+            ) 
             free(programList[i].lexeme);
     }
     free(programList);
