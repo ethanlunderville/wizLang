@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include "Keywords.h"
 #include "Interpreter.h"
 #include "Keywords.h"
@@ -113,16 +114,72 @@ void* binOpCode() {
     switch (operation) {
         case ADD: 
         {   
-            if (0) {
-
-            } else if (0) {
-
-            } else if (0) {
-
-            } else if (0) {
-
+            struct wizObject* val2 = pop();
+            struct wizObject* val1 = pop();
+            if (val1->type == STRINGTYPE && val2->type == STRINGTYPE) {
+                int oldVal1StrLength = strlen(val1->value.strValue);
+                int oldVal2StrLength = strlen(val2->value.strValue);
+                int newStrSize = oldVal1StrLength + oldVal2StrLength;
+                fetchArg(&program[instructionIndex],0)->value.strValue = malloc(newStrSize + 1);
+                fetchArg(&program[instructionIndex],0)->value.strValue[newStrSize] = '\0';
+                memcpy(
+                    fetchArg(&program[instructionIndex],0)->value.strValue,
+                    val1->value.strValue,
+                    oldVal1StrLength
+                );
+                memcpy(
+                    fetchArg(&program[instructionIndex],0)->value.strValue + oldVal1StrLength,
+                    val2->value.strValue, 
+                    oldVal2StrLength
+                );
+                fetchArg(&program[instructionIndex],0)->type = STRINGTYPE;
+                push();
+                // WRITE CODE TO MANAGE MEMORY IF NEEDED
+            } else if (val1->type == NUMBER && val2->type == NUMBER) {
+                fetchArg(&program[instructionIndex],0)->value.numValue = (
+                    val1->value.numValue + val2->value.numValue
+                );
+                fetchArg(&program[instructionIndex],0)->type = NUMBER;
+                push(); 
+            } else if (val1->type == STRINGTYPE && val2->type == NUMBER) {
+                int oldVal1StrLength = strlen(val1->value.strValue);
+                int doubleCount = countDigits(val2->value.numValue);
+                fetchArg(&program[instructionIndex],0)->value.strValue = malloc(oldVal1StrLength + doubleCount + 1);
+                fetchArg(&program[instructionIndex],0)->value.strValue[oldVal1StrLength + doubleCount] = '\0';
+                memcpy(
+                    fetchArg(&program[instructionIndex],0)->value.strValue,
+                    val1->value.strValue,
+                    oldVal1StrLength
+                );
+                snprintf(
+                    fetchArg(&program[instructionIndex],0)->value.strValue + oldVal1StrLength , 
+                    strlen(fetchArg(&program[instructionIndex],0)->value.strValue),
+                    "%.2f", 
+                    val2->value.numValue
+                );
+                removeZerosFromDoubleString(fetchArg(&program[instructionIndex],0)->value.strValue);
+                fetchArg(&program[instructionIndex],0)->type = STRINGTYPE;
+                push();
+            } else if (val1->type == NUMBER && val2->type == STRINGTYPE) {
+                int oldVal2StrLength = strlen(val2->value.strValue);
+                int doubleCount = countDigits(val1->value.numValue);
+                fetchArg(&program[instructionIndex],0)->value.strValue = malloc(oldVal2StrLength + doubleCount + 1);
+                fetchArg(&program[instructionIndex],0)->value.strValue[oldVal2StrLength + doubleCount] = '\0';
+                snprintf(
+                    fetchArg(&program[instructionIndex],0)->value.strValue, 
+                    doubleCount + 1,
+                    "%.2f", 
+                    val1->value.numValue
+                );
+                memcpy(
+                    fetchArg(&program[instructionIndex],0)->value.strValue + doubleCount,
+                    val2->value.strValue,
+                    oldVal2StrLength
+                );
+                fetchArg(&program[instructionIndex],0)->type = STRINGTYPE;
+                push();
             }
-            OP_EXECUTION_MACRO(+)
+            break;
         }
         case SUBTRACT: OP_EXECUTION_MACRO(-);
         case MULTIPLY: OP_EXECUTION_MACRO(*);
@@ -167,4 +224,36 @@ void interpret() {
         instructionIndex++;
         dumpStack();
     }
+}
+
+
+// HELPERS
+
+int removeZerosFromDoubleString(char * str) {
+    for (int i = strlen(str) - 1 ; i > -1 ; i--) {
+        if (str[i] != '0' && str[i] != '.') 
+            break;
+        str[i] = '\0';        
+    }
+    return strlen(str);
+}
+
+/*
+
+    Counts the number of digits needed for a double in
+    order to set aside space for string allocations
+    when casting strings to doubles.
+
+*/
+
+int countDigits(double number) {
+    int count = 0;
+    if (number < 0)
+        number *= -1;
+    while (number >= 1) {
+        number /= 10;
+        count++;
+    }
+    count++;
+    return count;
 }

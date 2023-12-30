@@ -51,4 +51,7 @@ void* binOpCode();
 void dumpStack();
 void interpret();
 
+int countDigits(double number);
+int removeZerosFromDoubleString(char * str);
+
 #endif

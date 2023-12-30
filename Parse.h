@@ -28,6 +28,7 @@ void scan();
 struct TokenStruct* getCurrentTokenStruct();
 bool isCurrentToken(enum Tokens token);
 bool onOperatorToken();
+bool onOperandToken();
 void expect(enum Tokens token);
 struct AST* sAtomicExpr();
 struct AST* sExpression();

@@ -270,7 +270,7 @@ struct AST* parse() {
     currentProgramListCounter = 0;
     struct AST* aTree = initAST(NULL);
     while (currentProgramListCounter < programListSize) {
-        if (onOperatorToken() || isCurrentToken(NUM))
+        if (onOperatorToken() || onOperandToken())
             addChild(aTree, sExpression(0));
         scan();
     }
