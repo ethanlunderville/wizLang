@@ -15,6 +15,7 @@
 #include "Keywords.h"
 
 #define OPCODE_ARGLIMIT 5
+#define STACK_LIMIT 100
 
 struct TokenStruct;
 struct AST;
@@ -51,7 +52,8 @@ void* binOpCode();
 void dumpStack();
 void interpret();
 
-int countDigits(double number);
+// Helpers
 int removeZerosFromDoubleString(char * str);
+void processPlusOperator(struct wizObject* val1, struct wizObject* val2, struct wizObject* opArgRef);
 
 #endif
