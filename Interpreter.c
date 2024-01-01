@@ -148,6 +148,10 @@ void* binOpCode() {
     return NULL;
 }
 
+void * jump() {
+    instructionIndex = fetchArg(&program[instructionIndex],0)->value.numValue;
+}
+
 /*
 
     Interpreter: Stage 4

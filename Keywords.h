@@ -26,7 +26,6 @@ enum Tokens {
 
     ASSIGNMENT,
     PIPE,
-    
     EQUAL,
     NOTEQUAL,
 
@@ -56,7 +55,20 @@ enum Tokens {
     ENDOPERANDS,
     COMMA,
     ENDLINE,
+    
+    IF,
+    ELSE,
+    WHILE,
+
+    OPENBRACE,
+    CLOSEBRACE,
+
     ENDOFFILE
+};
+
+#define KEYWORD_LISTSIZE 3
+static char* keywords[KEYWORD_LISTSIZE] = {
+    "if", "else", "while"
 };
 
 const char* getTokenName(enum Tokens token);

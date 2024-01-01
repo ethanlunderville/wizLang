@@ -118,10 +118,56 @@ void addArg(struct opCode * oCode, long wizIndex) {
     oCode->currentIndex++;
 }
 
+// Prints the opcode intermediate representation
+
+void printOpCodes() {
+    for (long i = 0 ; i < programSize ; i++) {
+        if (program[i].associatedOperation == &push) 
+            printf("PUSH"); 
+        else if (program[i].associatedOperation == &binOpCode) 
+            printf("BINOP");
+        else if (program[i].associatedOperation == &jump)
+            printf("JUMP");
+        else 
+            continue;
+        struct wizObject* arg;
+        for (int j = 0 ; j < program[i].currentIndex ; j++) {
+            arg = fetchArg(&program[i], j);
+            switch (arg->type) {
+                case BINOP:
+                {
+                    switch (arg->value.opValue) {
+                        case (ADD) : printf(" +"); break;
+                        case (SUBTRACT) : printf(" -"); break;
+                        case (MULTIPLY) : printf(" *"); break;
+                        case (DIVIDE) : printf(" /"); break;
+                        case (POWER) : printf(" ^"); break;
+                        case (LESSTHAN) : printf(" <"); break;
+                        case (GREATERTHAN) : printf(" >"); break;
+                        case (GREATEREQUAL) : printf(" >="); break;
+                        case (LESSEQUAL) : printf(" <="); break;
+                        case (AND) : printf(" &&"); break;
+                        case (OR) : printf(" ||"); break;
+                        case (ASSIGNMENT) : printf(" ="); break;
+                        case (PIPE) : printf(" |"); break;
+                        case (EQUAL) : printf(" =="); break;
+                        case (NOTEQUAL) : printf(" !="); break;
+                    }
+                    break;
+                }
+                case STRINGTYPE: printf(" %s", arg->value.strValue); break;
+                case NUMBER: printf(" %f", arg->value.numValue); break;
+            }
+        }
+        puts("");
+    }
+}
+
 // Function that the Compiler.c file calls to kick off codeGen stage.
 
 struct opCode * codeGen(struct AST * aTree) {
     codeGenWalker(aTree);
+    printOpCodes();
     return program;
 }
 
@@ -145,6 +191,7 @@ void codeGenWalker(struct AST * aTree) {
         return;
     }
     switch (aTree->token->type) {
+        case NONE: break;
         case NUMBER:
             {
             union TypeStore value;
@@ -171,6 +218,5 @@ void codeGenWalker(struct AST * aTree) {
         default:
             break;
     }
-
     return;
 }

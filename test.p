@@ -1,1 +1,1 @@
-66 + "jjk" + "Hello " + 25.2
+if while if

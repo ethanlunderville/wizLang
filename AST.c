@@ -25,6 +25,8 @@ int indentationCount = 0; // For printing tree
 */
 
 void printAST(struct AST* ast){
+    if (ast == NULL)
+        return;
     for (int i = 0 ; i < indentationCount ; i++)
         printf(" ");
     if (ast->token == NULL) 
@@ -56,7 +58,6 @@ struct AST* initAST(struct TokenStruct * token) {
     node->childLimit = BASECHILDNUMBER;
     node->children = (struct AST**) malloc(sizeof(struct AST**) * node->childLimit);
     node->childCount = 0;
-    node->childLimit = 0;
     node->token = token;
     return node;
 }

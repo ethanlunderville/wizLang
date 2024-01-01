@@ -42,12 +42,14 @@ struct opCode {
     ByteCodeFunctionPtr associatedOperation;
 };
 
+struct wizObject * fetchArg(struct opCode * op, int argNum);
 struct opCode * codeGen(struct AST * aTree);
 void codeGenWalker(struct AST * aTree);
 
 struct wizObject* pop();
 void* push();
 void* binOpCode();
+void* jump();
 
 void dumpStack();
 void interpret();

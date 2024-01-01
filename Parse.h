@@ -28,10 +28,14 @@ void scan();
 struct TokenStruct* getCurrentTokenStruct();
 bool isCurrentToken(enum Tokens token);
 bool onOperatorToken();
+bool onExpressionToken();
+bool onConditionalToken();
 bool onOperandToken();
 void expect(enum Tokens token);
+struct AST* sBlock();
 struct AST* sAtomicExpr();
 struct AST* sExpression();
+struct AST* sConditional();
 struct AST* parse();
 
 #endif

@@ -33,6 +33,11 @@ long programListCapacity = BASE_PROGRAM_LIST_SIZE;
 // LEXING RELATED FUNCTIONS
 ////////////////////////////////////////////////////////////////
 
+enum Tokens getKeywordFromString(char * str) {
+    if (strcmp(str, "if") == 0) return IF;
+    if (strcmp(str, "while") == 0) return WHILE;
+}
+
 const char* getTokenName(enum Tokens token) {
     switch (token) {
         case BEGINOPERATORS: return "BEGINOPERATORS";
@@ -61,9 +66,19 @@ const char* getTokenName(enum Tokens token) {
         case ENDOPERANDS: return "ENDOPERANDS";
         case COMMA: return "COMMA";
         case ENDLINE: return "ENDLINE";
+        case IF: return "IF";
+        case WHILE: return "WHILE";
         case ENDOFFILE: return "ENDOFFILE";
         default: return "Token not found";
     }
+}
+
+int isAKeyWord(char * str) {
+    for (int i = 0 ; i < KEYWORD_LISTSIZE ; i++) {
+        if (strcmp(str, keywords[i]) == 0) 
+            return 1;
+    }
+    return 0;
 }
 
 char checkNext(char* buffer, long index, char c) {
@@ -97,7 +112,7 @@ char* createNumberLexeme(long * bufferIndex, char * buffer) {
 
 // Allocates space for and returns a string lexeme.
 
-char* createStringLexeme(long * bufferIndex, char * buffer) {
+char * createStringLexeme(long * bufferIndex, char * buffer) {
     long currentIndex = *bufferIndex;
     while (buffer[currentIndex] != '"' && buffer[currentIndex] != '\0')
         currentIndex++;
@@ -108,6 +123,20 @@ char* createStringLexeme(long * bufferIndex, char * buffer) {
     *bufferIndex = currentIndex;
     return lexeme;
 }
+
+
+char * createAlphaLexeme(long * bufferIndex, char * buffer) {
+    long currentIndex = *bufferIndex;
+    while (isalpha(buffer[currentIndex]) || buffer[currentIndex] == '_')
+        currentIndex++;
+    long diff = currentIndex - *bufferIndex;
+    char* lexeme = (char*)malloc(diff+1);
+    memcpy(lexeme, buffer + (*bufferIndex), diff);
+    lexeme[diff] = '\0';
+    *bufferIndex = currentIndex - 1;
+    return lexeme;
+}
+
 
 void lex(char* buffer, struct TokenStruct * programList) {
     long lineNo = 1;
@@ -123,6 +152,8 @@ void lex(char* buffer, struct TokenStruct * programList) {
         case '^': addToProgramList("^", BINOP, lineNo ,POWER); break;
         case '(': addToProgramList("(", OP, lineNo ,LEFTPARENTH); break;
         case ')': addToProgramList(")", OP, lineNo ,RIGHTPARENTH); break;
+        case '{': addToProgramList("{", NONE, lineNo ,OPENBRACE); break;
+        case '}': addToProgramList("}", NONE, lineNo ,CLOSEBRACE); break;
         case '\n': {
             addToProgramList("\n", NONE, lineNo ,ENDLINE); 
             lineNo++; 
@@ -195,7 +226,11 @@ void lex(char* buffer, struct TokenStruct * programList) {
             if (isdigit(buffer[i])) {
                 addToProgramList(createNumberLexeme(&i, buffer), NUMBER, lineNo ,NUM);
             } else if (isalpha(buffer[i])) {
-                
+                char * alphaLex = createAlphaLexeme(&i, buffer);
+                isAKeyWord(alphaLex) ? 
+                addToProgramList(alphaLex, NONE, lineNo ,getKeywordFromString(alphaLex)) 
+                : 
+                addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
             }
         }
     }
@@ -254,6 +289,45 @@ void freeProgramList(struct TokenStruct * programList, long size) {
 // PARSING RELATED FUNCTIONS
 ////////////////////////////////////////////////////////////////
 
+struct AST* sBlock() {
+    expect(OPENBRACE);
+    while (!isCurrentToken(CLOSEBRACE)) {
+        if (onExpressionToken())
+            addChild(aTree, sExpression());
+        else if (onConditionalToken())
+            addChild(aTree, sConditional());
+        scan();
+    }
+    expect(CLOSEBRACE);
+}
+
+struct AST* sConditional() {
+    struct AST * condTree = initAST(getCurrentTokenStruct());
+    switch (getCurrentTokenStruct()->token) {
+        case IF:
+        {
+            scan();
+            expect(LEFTPARENTH);
+            addChild(condTree, sExpression());
+            expect(RIGHTPARENTH);
+            addChild(condTree, sBlock());
+            break;
+        } 
+        case WHILE:
+        {
+            break;
+        }
+        default: {
+            FATAL_ERROR(
+                PARSE,
+                "Internal: Unrecognized Conditional", 
+                getCurrentLine()
+            );
+        }
+    }
+    return condTree;
+} 
+
 /*
 
     Parser: STAGE 2
@@ -270,8 +344,10 @@ struct AST* parse() {
     currentProgramListCounter = 0;
     struct AST* aTree = initAST(NULL);
     while (currentProgramListCounter < programListSize) {
-        if (onOperatorToken() || onOperandToken())
-            addChild(aTree, sExpression(0));
+        if (onExpressionToken())
+            addChild(aTree, sExpression());
+        else if (onConditionalToken())
+            addChild(aTree, sConditional());
         scan();
     }
     return aTree;
@@ -305,6 +381,12 @@ bool isCurrentToken(enum Tokens token) {
 
 // Parser utility
 
+bool onExpressionToken() {
+    return onOperatorToken() || onOperandToken();
+}
+
+// Parser utility
+
 bool onOperatorToken() {
     if (programListSize <= currentProgramListCounter)
         return false;
@@ -332,6 +414,15 @@ bool onData() {
         return false;
     if (isCurrentToken(NUM) || isCurrentToken(STRING))
         return true;
+    return false;
+}
+
+// Parser utility
+
+bool onConditionalToken() {
+    if ( isCurrentToken(IF)
+       ||isCurrentToken(WHILE)
+    ) return true;
     return false;
 }
 
