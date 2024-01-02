@@ -26,6 +26,7 @@ void freeProgramList(struct TokenStruct * programList, long size);
 void lex(char* buffer, struct TokenStruct * programList);
 void scan();
 struct TokenStruct* getCurrentTokenStruct();
+long getCurrentLine();
 bool isCurrentToken(enum Tokens token);
 bool onOperatorToken();
 bool onExpressionToken();

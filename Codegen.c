@@ -136,24 +136,24 @@ void printOpCodes() {
             switch (arg->type) {
                 case BINOP:
                 {
-                    switch (arg->value.opValue) {
-                        case (ADD) : printf(" +"); break;
-                        case (SUBTRACT) : printf(" -"); break;
-                        case (MULTIPLY) : printf(" *"); break;
-                        case (DIVIDE) : printf(" /"); break;
-                        case (POWER) : printf(" ^"); break;
-                        case (LESSTHAN) : printf(" <"); break;
-                        case (GREATERTHAN) : printf(" >"); break;
-                        case (GREATEREQUAL) : printf(" >="); break;
-                        case (LESSEQUAL) : printf(" <="); break;
-                        case (AND) : printf(" &&"); break;
-                        case (OR) : printf(" ||"); break;
-                        case (ASSIGNMENT) : printf(" ="); break;
-                        case (PIPE) : printf(" |"); break;
-                        case (EQUAL) : printf(" =="); break;
-                        case (NOTEQUAL) : printf(" !="); break;
-                    }
-                    break;
+                switch (arg->value.opValue) {
+                    case (ADD) : printf(" +"); break;
+                    case (SUBTRACT) : printf(" -"); break;
+                    case (MULTIPLY) : printf(" *"); break;
+                    case (DIVIDE) : printf(" /"); break;
+                    case (POWER) : printf(" ^"); break;
+                    case (LESSTHAN) : printf(" <"); break;
+                    case (GREATERTHAN) : printf(" >"); break;
+                    case (GREATEREQUAL) : printf(" >="); break;
+                    case (LESSEQUAL) : printf(" <="); break;
+                    case (AND) : printf(" &&"); break;
+                    case (OR) : printf(" ||"); break;
+                    case (ASSIGNMENT) : printf(" ="); break;
+                    case (PIPE) : printf(" |"); break;
+                    case (EQUAL) : printf(" =="); break;
+                    case (NOTEQUAL) : printf(" !="); break;
+                }
+                break;
                 }
                 case STRINGTYPE: printf(" %s", arg->value.strValue); break;
                 case NUMBER: printf(" %f", arg->value.numValue); break;
@@ -217,6 +217,21 @@ void codeGenWalker(struct AST * aTree) {
             }
         default:
             break;
+    }
+    switch (aTree->token->token) {
+        case IF:
+        {
+            long jmpLabel = programSize;
+            assert(aTree->childCount > 0);
+            codeGenWalker(aTree->children[0]);
+            union TypeStore value;
+            value.numValue = jmpLabel;
+
+        }
+        case WHILE:
+        {
+            
+        }
     }
     return;
 }

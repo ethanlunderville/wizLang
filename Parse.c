@@ -36,6 +36,7 @@ long programListCapacity = BASE_PROGRAM_LIST_SIZE;
 enum Tokens getKeywordFromString(char * str) {
     if (strcmp(str, "if") == 0) return IF;
     if (strcmp(str, "while") == 0) return WHILE;
+    if (strcmp(str, "else") == 0) return ELSE;
 }
 
 const char* getTokenName(enum Tokens token) {
@@ -154,11 +155,6 @@ void lex(char* buffer, struct TokenStruct * programList) {
         case ')': addToProgramList(")", OP, lineNo ,RIGHTPARENTH); break;
         case '{': addToProgramList("{", NONE, lineNo ,OPENBRACE); break;
         case '}': addToProgramList("}", NONE, lineNo ,CLOSEBRACE); break;
-        case '\n': {
-            addToProgramList("\n", NONE, lineNo ,ENDLINE); 
-            lineNo++; 
-            break;
-        } 
         case '<': {
             if (checkNext(buffer,i,'=')) {
                 i++;
@@ -290,15 +286,18 @@ void freeProgramList(struct TokenStruct * programList, long size) {
 ////////////////////////////////////////////////////////////////
 
 struct AST* sBlock() {
+    struct AST * bTree = initAST(getCurrentTokenStruct());
     expect(OPENBRACE);
     while (!isCurrentToken(CLOSEBRACE)) {
         if (onExpressionToken())
-            addChild(aTree, sExpression());
+            addChild(bTree, sExpression());
         else if (onConditionalToken())
-            addChild(aTree, sConditional());
-        scan();
+            addChild(bTree, sConditional());
+        else if (getCurrentTokenStruct()->token == ENDLINE)
+            scan();
     }
     expect(CLOSEBRACE);
+    return bTree;
 }
 
 struct AST* sConditional() {
@@ -311,10 +310,19 @@ struct AST* sConditional() {
             addChild(condTree, sExpression());
             expect(RIGHTPARENTH);
             addChild(condTree, sBlock());
+            if (!isCurrentToken(ELSE)) 
+                break;
+            scan();
+            addChild(condTree, sBlock());
             break;
         } 
         case WHILE:
         {
+            scan();
+            expect(LEFTPARENTH);
+            addChild(condTree, sExpression());
+            expect(RIGHTPARENTH);
+            addChild(condTree, sBlock());
             break;
         }
         default: {
@@ -348,7 +356,10 @@ struct AST* parse() {
             addChild(aTree, sExpression());
         else if (onConditionalToken())
             addChild(aTree, sConditional());
-        scan();
+        else if (getCurrentTokenStruct()->token == ENDOFFILE)
+            scan();
+        else
+            ERROR(PARSE,"Unexpected symbol", getCurrentLine());
     }
     return aTree;
 }
@@ -442,9 +453,9 @@ bool onExpressionBreaker() {
 void expect(enum Tokens token) {
     if (programList[currentProgramListCounter].token != token) {
         printf(
-            "ERROR IN PARSER:: EXPECTED: %i, GOT: %i\n", 
-            token, 
-            programList[currentProgramListCounter].token 
+            "ERROR IN PARSER:: EXPECTED: %s, GOT: %s\n", 
+            getTokenName(token), 
+            getTokenName(programList[currentProgramListCounter].token) 
         );
         exit(1);        
     }

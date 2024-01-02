@@ -149,7 +149,9 @@ void* binOpCode() {
 }
 
 void * jump() {
-    instructionIndex = fetchArg(&program[instructionIndex],0)->value.numValue;
+    struct wizObject * wizOb = pop(); 
+    if (wizOb->value.numValue > 0)
+        instructionIndex = fetchArg(&program[instructionIndex],0)->value.numValue;
 }
 
 /*
