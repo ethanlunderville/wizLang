@@ -15,9 +15,11 @@
 #include <math.h>
 #include <string.h>
 #include <float.h>
+#include <assert.h>
 #include "Keywords.h"
 #include "Interpreter.h"
 #include "Keywords.h"
+#include "Context.h"
 
 // These two are defined in Codegen.c
 extern long programSize; 
@@ -33,6 +35,9 @@ int stackSize = 0;
 
 // Approaches program size as the program executes.
 long instructionIndex = 0;
+
+// Current program context
+struct Context* context;
 
 /*
 
@@ -96,6 +101,23 @@ void* push() {
     return NULL;
 }
 
+// Pushes a value from the enviroment onto the Runtime Stack.
+
+void* pushLookup() {
+    if (stackSize == STACK_LIMIT) {
+        puts("Stack Overflow!");
+        exit(EXIT_FAILURE);
+    }
+    // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
+    stack[stackSize] = *getObjectRefFromIdentifier(
+        fetchArg(
+            &(program[instructionIndex]),0
+        )->value.strValue
+    );
+    stackSize++;
+    return NULL;
+}
+
 // Handles binary operations.
 
 #define OP_EXECUTION_MACRO(op) \
@@ -140,8 +162,16 @@ void* binOpCode() {
         case LESSTHAN: OP_EXECUTION_MACRO(<);
         case NOTEQUAL: OP_EXECUTION_MACRO(!=);
         case EQUAL: OP_EXECUTION_MACRO(==);
-        case PIPE: {break;}
-        case ASSIGNMENT: {break;};
+        case ASSIGNMENT: 
+        {
+        struct wizObject * temp = pop();
+        assert(temp->type == IDENTIFIER);
+        struct wizObject ** ref = getObjectRefFromIdentifier(temp->value.strValue);
+        if (ref == NULL)
+             ref = declareSymbol(temp->value.strValue);
+        *ref = pop();
+        }
+        case PIPE: {break;};
         default: break;
     }
     
@@ -149,10 +179,15 @@ void* binOpCode() {
 }
 
 void * jump() {
-    struct wizObject * wizOb = pop(); 
-    if (wizOb->value.numValue > 0)
-        instructionIndex = fetchArg(&program[instructionIndex],0)->value.numValue;
+    instructionIndex = (long)fetchArg(&program[instructionIndex],0)->value.numValue - 2;
 }
+
+void * jumpNe() {
+    struct wizObject * wizOb = pop(); 
+    if ((long)wizOb->value.numValue == 0)
+        instructionIndex = (long)fetchArg(&program[instructionIndex],0)->value.numValue - 2;
+}
+
 
 /*
 
@@ -165,6 +200,7 @@ void * jump() {
 */
 
 void interpret() {
+    initContext();
     while (instructionIndex < programSize) {
         program[instructionIndex].associatedOperation();
         instructionIndex++;

@@ -155,6 +155,11 @@ void lex(char* buffer, struct TokenStruct * programList) {
         case ')': addToProgramList(")", OP, lineNo ,RIGHTPARENTH); break;
         case '{': addToProgramList("{", NONE, lineNo ,OPENBRACE); break;
         case '}': addToProgramList("}", NONE, lineNo ,CLOSEBRACE); break;
+        case '\n': {
+            addToProgramList("\n", NONE, lineNo ,ENDLINE); 
+            lineNo++; 
+            break;
+        } 
         case '<': {
             if (checkNext(buffer,i,'=')) {
                 i++;
@@ -356,6 +361,8 @@ struct AST* parse() {
             addChild(aTree, sExpression());
         else if (onConditionalToken())
             addChild(aTree, sConditional());
+        else if (getCurrentTokenStruct()->token == ENDLINE)
+            scan();
         else if (getCurrentTokenStruct()->token == ENDOFFILE)
             scan();
         else
@@ -568,7 +575,10 @@ struct AST * sExpression() {
         printf("%s ", getCurrentTokenStruct()->lexeme);
         if (!onOperandToken())
             FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
-        if (isCurrentToken(LEFTPARENTH)){
+        if (isCurrentToken(IDENTIFIER)) {
+            push(&operandStack, initAST(getCurrentTokenStruct()));
+            scan();
+        } else if (isCurrentToken(LEFTPARENTH)){
             scan();
             push(&operandStack, sExpression());
             expect(RIGHTPARENTH);

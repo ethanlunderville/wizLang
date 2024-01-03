@@ -1,0 +1,4 @@
+push 0
+jumpne 3
+push 1
+jne 5

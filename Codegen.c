@@ -13,7 +13,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 #include "Interpreter.h"
+#include "Context.h"
 #include "AST.h"
 #include "Mem.h"
 
@@ -121,15 +123,24 @@ void addArg(struct opCode * oCode, long wizIndex) {
 // Prints the opcode intermediate representation
 
 void printOpCodes() {
-    for (long i = 0 ; i < programSize ; i++) {
+    long i = 0;
+    for ( ; i < programSize ; i++) {
+        printf("%li) ", i+1);
         if (program[i].associatedOperation == &push) 
             printf("PUSH"); 
         else if (program[i].associatedOperation == &binOpCode) 
             printf("BINOP");
         else if (program[i].associatedOperation == &jump)
             printf("JUMP");
-        else 
-            continue;
+        else if (program[i].associatedOperation == &jumpNe)
+            printf("JUMPNE");
+        else if (program[i].associatedOperation == &pushScope)
+            printf("PUSHSCOPE");
+        else if (program[i].associatedOperation == &popScope)
+            printf("POPSCOPE");
+        else if (program[i].associatedOperation == &pushLookup)
+            printf("PUSHLOOKUP");
+        else continue;
         struct wizObject* arg;
         for (int j = 0 ; j < program[i].currentIndex ; j++) {
             arg = fetchArg(&program[i], j);
@@ -161,6 +172,7 @@ void printOpCodes() {
         }
         puts("");
     }
+    printf("%li) END\n", i+1);
 }
 
 // Function that the Compiler.c file calls to kick off codeGen stage.
@@ -221,16 +233,56 @@ void codeGenWalker(struct AST * aTree) {
     switch (aTree->token->token) {
         case IF:
         {
-            long jmpLabel = programSize;
-            assert(aTree->childCount > 0);
+            assert(aTree->childCount > 1);
             codeGenWalker(aTree->children[0]);
             union TypeStore value;
-            value.numValue = jmpLabel;
-
+            value.numValue = 0;
+            struct opCode * op = programAdder(jumpNe);
+            addArg(op, initWizArg(value,NUMBER));
+            codeGenWalker(aTree->children[1]);
+            if (aTree->childCount <= 2) {
+                fetchArg(op, 0)->value.numValue = programSize+1;
+                break;
+            }
+            struct opCode * elseJump = programAdder(jump);
+            addArg(elseJump, initWizArg(value,NUMBER));
+            fetchArg(op, 0)->value.numValue = programSize+1;
+            if (aTree->children[2]->childCount > 0)
+                codeGenWalker(aTree->children[2]->children[0]);
+            fetchArg(elseJump, 0)->value.numValue = programSize+1;
+            break;
         }
         case WHILE:
         {
-            
+            long programCounterSave = programSize+1;
+            assert(aTree->childCount > 1);
+            codeGenWalker(aTree->children[0]);
+            union TypeStore value;
+            value.numValue = 0;
+            struct opCode * op = programAdder(jumpNe);
+            addArg(op, initWizArg(value,NUMBER));
+            codeGenWalker(aTree->children[1]);
+            value.numValue = (double) programCounterSave;
+            struct opCode * jmp = programAdder(jump);
+            addArg(jmp, initWizArg(value,NUMBER));
+            fetchArg(op, 0)->value.numValue = programSize+1;
+            break;
+        }
+        case OPENBRACE:
+        {   
+            programAdder(pushScope);
+            for (int i = 0 ; i < aTree->childCount ; i++) {
+                codeGenWalker(aTree->children[i]);
+            }
+            programAdder(popScope);
+            break;
+        }
+        case IDENTIFIER:
+        {
+            union TypeStore value;
+            value.strValue = aTree->token->lexeme;
+            addArg(programAdder(pushLookup), initWizArg(value, STRINGTYPE));
+            break;
         }
     }
     return;

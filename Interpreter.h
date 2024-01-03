@@ -50,6 +50,8 @@ struct wizObject* pop();
 void* push();
 void* binOpCode();
 void* jump();
+void* jumpNe();
+void* pushLookup();
 
 void dumpStack();
 void interpret();
