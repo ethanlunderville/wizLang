@@ -52,15 +52,21 @@ struct wizObject ** declareSymbol(char * ident) {
 void printContext() {
     struct Context* ref = context;
     puts("---------Context---------");
+    int count = 0;
     while (ref != NULL) {
         for (int i = 0 ; i < ref->currentIndex ; i++) {
+            for (int j = 0 ; j < count ; j++) 
+                printf(" ");
             printf("%s : ", ref->map[i].identifier);
             switch (ref->map[i].value->type) {
                 case STRINGTYPE: printf("%s\n",ref->map[i].value->value.strValue); break;
                 case NUMBER: printf("%f\n",ref->map[i].value->value.numValue); break;
             }
+            for (int j = 0 ; j < count ; j++) 
+                printf(" ");
             puts("-------------------------");
         }
         ref = ref->cPtr;
+        count++;
     }
 }

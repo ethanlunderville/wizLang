@@ -114,13 +114,13 @@ long initWizArg(union TypeStore val, enum Types type) {
 // Adds an argument to the opCode. 
 // See the opCode struct in Interpreter.h for more clarity.
 
-void addArg(struct opCode * oCode, long wizIndex) {
-    if (oCode->currentIndex == OPCODE_ARGLIMIT) {
+void addArg(long opCodeIndex, long wizIndex) {
+    if (program[opCodeIndex].currentIndex == OPCODE_ARGLIMIT) {
         puts("ArgCount error: Too many args");
         exit(1);
     }
-    oCode->argIndexes[oCode->currentIndex] = wizIndex;
-    oCode->currentIndex++;
+    program[opCodeIndex].argIndexes[program[opCodeIndex].currentIndex] = wizIndex;
+    program[opCodeIndex].currentIndex++;
 }
 
 // Prints the opcode intermediate representation
@@ -149,12 +149,14 @@ void printOpCodes() {
             printf("STACKFRAME");
         else if (program[i].associatedOperation == &fReturn)
             printf("RETURN");
+        else if (program[i].associatedOperation == &fReturnNoArg)
+            printf("RETURN <NULL>");
         else if (program[i].associatedOperation == &call)
             printf("CALL");
         else continue;
         struct wizObject* arg;
         for (int j = 0 ; j < program[i].currentIndex ; j++) {
-            arg = fetchArg(&program[i], j);
+            arg = fetchArg(i, j);
             switch (arg->type) {
                 case BINOP:
                 {
@@ -208,7 +210,7 @@ struct opCode * codeGen(struct AST * aTree) {
     AST node
 
 */
-void breakPoint(){}
+void brek(){}
 void codeGenWalker(struct AST * aTree) {
     if (aTree != NULL && aTree->token == NULL) {
         for (int i = 0 ; i < aTree->childCount ; i++)
@@ -257,14 +259,14 @@ void codeGenWalker(struct AST * aTree) {
             codeGenWalker(aTree->children[0]);
             union TypeStore value;
             value.numValue = 0;
-            struct opCode * op = programAdder(jumpNe);
+            long op = programAdder(jumpNe);
             addArg(op, initWizArg(value,NUMBER));
             codeGenWalker(aTree->children[1]);
             if (aTree->childCount <= 2) {
                 fetchArg(op, 0)->value.numValue = programSize+1;
                 break;
             }
-            struct opCode * elseJump = programAdder(jump);
+            long elseJump = programAdder(jump);
             addArg(elseJump, initWizArg(value,NUMBER));
             fetchArg(op, 0)->value.numValue = programSize+1;
             if (aTree->children[2]->childCount > 0)
@@ -279,11 +281,11 @@ void codeGenWalker(struct AST * aTree) {
             codeGenWalker(aTree->children[0]);
             union TypeStore value;
             value.numValue = 0;
-            struct opCode * op = programAdder(jumpNe);
+            long op = programAdder(jumpNe);
             addArg(op, initWizArg(value,NUMBER));
             codeGenWalker(aTree->children[1]);
             value.numValue = (double) programCounterSave;
-            struct opCode * jmp = programAdder(jump);
+            long jmp = programAdder(jump);
             addArg(jmp, initWizArg(value,NUMBER));
             fetchArg(op, 0)->value.numValue = programSize+1;
             break;
@@ -316,7 +318,7 @@ void codeGenWalker(struct AST * aTree) {
             // Initialize an unconditional jump that prevents the function from being called when it is declared
             union TypeStore value;
             value.numValue = 0;
-            struct opCode * op = programAdder(jump);
+            long op = programAdder(jump);
             addArg(op, initWizArg(value,NUMBER));
 
             programAdder(pushScope);
@@ -327,15 +329,13 @@ void codeGenWalker(struct AST * aTree) {
                 value.opValue = ASSIGNMENT;
                 addArg(programAdder(fAssign), initWizArg(value, BINOP));
             }
+            brek();
             // Process related code block
-            for (int i = 0; aTree->children[0]->children[aTree->children[0]->childCount - 1]->childCount;i++)
-                codeGenWalker(aTree->children[0]->children[aTree->children[0]->childCount - 1]);
-            breakPoint();
-            programAdder(popScope);
-
+            for (int i = 0; i < aTree->children[0]->children[aTree->children[0]->childCount - 1]->childCount;i++)
+                codeGenWalker(aTree->children[0]->children[aTree->children[0]->childCount - 1]->children[i]);
+            programAdder(fReturnNoArg);
             // Update unconditional jump location
             fetchArg(op,0)->value.numValue = programSize + 1;
-            
             break;        
         }
         case IDENTIFIER:
@@ -351,8 +351,18 @@ void codeGenWalker(struct AST * aTree) {
             for (int i = 0 ; i < aTree->childCount ; i++)
                 codeGenWalker(aTree->children[i]);
             union TypeStore value;
-            value.numValue = (*getObjectRefFromIdentifier(aTree->token->lexeme))->value.numValue;
-            addArg(programAdder(call), initWizArg(value, NUMBER));
+            value.strValue = aTree->token->lexeme;
+            addArg(programAdder(call), initWizArg(value, STRINGTYPE));
+            break;
+        }
+        case RETURN:
+        {
+            if (aTree->childCount == 1) {
+                codeGenWalker(aTree->children[0]);
+                programAdder(fReturn);
+                break;
+            }
+            programAdder(fReturnNoArg);
             break;
         }
     }

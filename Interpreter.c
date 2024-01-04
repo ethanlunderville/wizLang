@@ -20,6 +20,7 @@
 #include "Interpreter.h"
 #include "Keywords.h"
 #include "Context.h"
+#include "Builtins.h"
 
 // These two are defined in Codegen.c
 extern long programSize; 
@@ -43,6 +44,20 @@ long instructionIndex = 0;
 // Current program context
 struct Context* context;
 
+/*
+
+    This is to fetch args from the flattened list of
+    arguments. See the initWizArg function in
+    Codegen.c for a explaination as to why this is
+    done in this way
+
+*/
+
+struct wizObject * fetchArg (long opCodeIndex, int argNum) {
+    return &wizSlab[program[opCodeIndex].argIndexes[argNum]];
+}
+
+
 long popCounterStack(struct lineCounterStack* counterStack) {
     if (counterStack->stackSize == 0) {
         puts("Attempted to pop empty counter stack!");
@@ -62,19 +77,6 @@ void pushCounterStack(struct lineCounterStack* counterStack, long val) {
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     counterStack->stack[counterStack->stackSize] = val;
     counterStack->stackSize++;
-}
-
-/*
-
-    This is to fetch args from the flattened list of
-    arguments. See the initWizArg function in
-    Codegen.c for a explaination as to why this is
-    done in this way
-
-*/
-
-struct wizObject * fetchArg (struct opCode * op, int argNum) {
-    return &wizSlab[op->argIndexes[argNum]];
 }
 
 // Stack dumper for debugging.
@@ -121,7 +123,7 @@ void* push() {
         exit(EXIT_FAILURE);
     }
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
-    stack[stackSize] = fetchArg(&(program[instructionIndex]),0);
+    stack[stackSize] = fetchArg(instructionIndex,0);
     stackSize++;
     return NULL;
 }
@@ -135,9 +137,7 @@ void* pushLookup() {
     }
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     stack[stackSize] = *getObjectRefFromIdentifier(
-        fetchArg(
-            &(program[instructionIndex]),0
-        )->value.strValue
+        fetchArg(instructionIndex,0)->value.strValue
     );
     stackSize++;
     return NULL;
@@ -147,22 +147,22 @@ void* pushLookup() {
 
 #define OP_EXECUTION_MACRO(op) \
             rightHand = pop()->value.numValue; \
-            fetchArg(&program[instructionIndex],0)->value.numValue = ( \
+            fetchArg(instructionIndex,0)->value.numValue = ( \
                 pop()->value.numValue op rightHand \
             ); \
-            fetchArg(&program[instructionIndex],0)->type = NUMBER; \
+            fetchArg(instructionIndex,0)->type = NUMBER; \
             push(); \
             break;
 
 void* binOpCode() {
-    enum Tokens operation = fetchArg(&program[instructionIndex],0)->value.opValue;
+    enum Tokens operation = fetchArg(instructionIndex,0)->value.opValue;
     double rightHand;
     switch (operation) {
         case ADD: 
         {   
             struct wizObject* val2 = pop();
             struct wizObject* val1 = pop();
-            struct wizObject* opArgRef = fetchArg(&program[instructionIndex],0);
+            struct wizObject* opArgRef = fetchArg(instructionIndex,0);
             processPlusOperator(val1, val2, opArgRef);
             break;
         }
@@ -172,10 +172,10 @@ void* binOpCode() {
         case POWER:
         {
             double rightHand = pop()->value.numValue;
-            fetchArg(&program[instructionIndex],0)->value.numValue = (
+            fetchArg(instructionIndex,0)->value.numValue = (
                 pow(pop()->value.numValue, rightHand)
             );
-            fetchArg(&program[instructionIndex],0)->type = NUMBER;
+            fetchArg(instructionIndex,0)->type = NUMBER;
             push();
             break;
         }
@@ -207,7 +207,7 @@ void* binOpCode() {
 void * fAssign() {
     struct wizObject * ident = pop();
     struct wizObject * temp = pop();
-    assert(ident->type == IDENTIFIER);
+    assert(ident->type == STRINGTYPE);
     struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
     if (ref == NULL)
          ref = declareSymbol(ident->value.strValue);
@@ -215,13 +215,13 @@ void * fAssign() {
 }
 
 void * jump() {
-    instructionIndex = (long)fetchArg(&program[instructionIndex],0)->value.numValue - 2;
+    instructionIndex = (long)fetchArg(instructionIndex,0)->value.numValue - 2;
 }
 
 void * jumpNe() {
     struct wizObject * wizOb = pop(); 
     if ((long)wizOb->value.numValue == 0)
-        instructionIndex = (long)fetchArg(&program[instructionIndex],0)->value.numValue - 2;
+        instructionIndex = (long)fetchArg(instructionIndex,0)->value.numValue - 2;
 }
 
 void * createStackFrame() {
@@ -229,12 +229,40 @@ void * createStackFrame() {
 }
 
 void * call() {
+    char* functionName = fetchArg(instructionIndex,0)->value.strValue;
+    BuiltInFunctionPtr potentialBuiltin = getBuiltin(functionName);
+    if (potentialBuiltin != 0) {
+        potentialBuiltin(functionName);
+        popCounterStack(&stackFrames);
+        return NULL;
+    }
     pushCounterStack(&returnLines, instructionIndex);
-    instructionIndex = (long)fetchArg(&program[instructionIndex],0)->value.numValue - 2;
+    instructionIndex = ((long) (*getObjectRefFromIdentifier(functionName))->value.numValue) - 2;
 }
 
 void * fReturn() {
+    struct wizObject* retVal = pop();
+    int stackSizeTarget = stackFrames.stack[stackFrames.stackSize - 1];
+    while (stackSize != stackSizeTarget)
+        pop();
+    popCounterStack(&stackFrames);
+    instructionIndex = popCounterStack(&returnLines);
+    popScope();
+    if (stackSize == STACK_LIMIT) {
+        puts("Stack Overflow!");
+        exit(EXIT_FAILURE);
+    }
+    stack[stackSize] = retVal;
+    stackSize++;
+}
 
+void * fReturnNoArg() {
+    int stackSizeTarget = stackFrames.stack[stackFrames.stackSize - 1];
+    while (stackSize != stackSizeTarget)
+        pop();
+    popCounterStack(&stackFrames);
+    instructionIndex = popCounterStack(&returnLines);
+    popScope();
 }
 
 /*
@@ -251,7 +279,7 @@ void interpret() {
     while (instructionIndex < programSize) {
         program[instructionIndex].associatedOperation();
         instructionIndex++;
-        dumpStack();
+        //dumpStack();
         //printContext();
     }
 }

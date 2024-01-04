@@ -65,13 +65,14 @@ enum Tokens {
     CLOSEBRACE,
 
     DEF,
+    RETURN,
 
     ENDOFFILE
 };
 
-#define KEYWORD_LISTSIZE 4
+#define KEYWORD_LISTSIZE 5
 static char* keywords[KEYWORD_LISTSIZE] = {
-    "if", "else", "while", "def"
+    "if", "else", "while", "def", "return"
 };
 
 const char* getTokenName(enum Tokens token);

@@ -48,13 +48,14 @@ struct lineCounterStack {
     int stackSize;
 };
 
-struct wizObject * fetchArg(struct opCode * op, int argNum);
+struct wizObject * fetchArg(long opCodeIndex, int argNum);
 struct opCode * codeGen(struct AST * aTree);
 void codeGenWalker(struct AST * aTree);
 
 struct wizObject* pop();
 
 void* createStackFrame();
+void * fReturnNoArg();
 void* fReturn();
 void* call();
 void* fAssign();

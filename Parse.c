@@ -40,6 +40,7 @@ enum Tokens getKeywordFromString(char * str) {
     if (strcmp(str, "while") == 0) return WHILE;
     if (strcmp(str, "else") == 0) return ELSE;
     if (strcmp(str, "def") == 0) return DEF;
+    if (strcmp(str, "return") == 0) return RETURN;
     return -1;
 }
 
@@ -304,6 +305,7 @@ struct AST* sIdentTree() {
             if (!isCurrentToken(RIGHTPARENTH)) 
                 expect(COMMA);
         }
+        scan();
         break;
         }
         default: {
@@ -311,6 +313,14 @@ struct AST* sIdentTree() {
         }
     }
     return identTree;
+}
+
+struct AST* sReturn() {
+    struct AST* reTree = initAST(getCurrentTokenStruct());
+    expect(RETURN);
+    if (onExpressionToken())
+        addChild(reTree, sExpression());
+    return reTree;
 }
 
 // Parses { }
@@ -323,6 +333,8 @@ struct AST* sBlock() {
             addChild(bTree, sExpression());
         else if (onConditionalToken())
             addChild(bTree, sConditional());
+        else if (isCurrentToken(RETURN))
+            addChild(bTree, sReturn());
         else if (getCurrentTokenStruct()->token == ENDLINE)
             scan();
     }
@@ -630,7 +642,6 @@ struct AST * sExpression() {
             FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
         if (isCurrentToken(IDENTIFIER)) {
             push(&operandStack, sIdentTree());
-            scan();
         } else if (isCurrentToken(LEFTPARENTH)){
             scan();
             push(&operandStack, sExpression());
