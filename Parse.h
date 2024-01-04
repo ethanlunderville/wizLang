@@ -28,6 +28,7 @@ void scan();
 struct TokenStruct* getCurrentTokenStruct();
 long getCurrentLine();
 bool isCurrentToken(enum Tokens token);
+bool onFunctionDeclaration();
 bool onOperatorToken();
 bool onExpressionToken();
 bool onConditionalToken();
@@ -37,6 +38,7 @@ struct AST* sBlock();
 struct AST* sAtomicExpr();
 struct AST* sExpression();
 struct AST* sConditional();
+struct AST* sIdentTree();
 struct AST* parse();
 
 #endif

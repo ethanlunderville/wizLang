@@ -16,8 +16,8 @@ struct Context {
     int currentIndex;
 };
 
-void initContext();
-int alreadyDeclared(char * identifier);
+struct Context* initContext();
+void printContext();
 int addToContext(char * identifier, struct wizObject * test);
 void* pushScope();
 void* popScope();

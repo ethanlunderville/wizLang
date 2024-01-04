@@ -15,6 +15,7 @@
 #include "Keywords.h"
 
 #define OPCODE_ARGLIMIT 5
+#define LINE_STACK_LIMIT 100
 #define STACK_LIMIT 100
 
 struct TokenStruct;
@@ -42,11 +43,21 @@ struct opCode {
     ByteCodeFunctionPtr associatedOperation;
 };
 
+struct lineCounterStack {
+    long stack[LINE_STACK_LIMIT];
+    int stackSize;
+};
+
 struct wizObject * fetchArg(struct opCode * op, int argNum);
 struct opCode * codeGen(struct AST * aTree);
 void codeGenWalker(struct AST * aTree);
 
 struct wizObject* pop();
+
+void* createStackFrame();
+void* fReturn();
+void* call();
+void* fAssign();
 void* push();
 void* binOpCode();
 void* jump();

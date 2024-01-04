@@ -56,7 +56,7 @@ char* fileToBuffer(char * fileName) {
 }
 
 int main () {
-    char* buffer = fileToBuffer("test.p"); 
+    char* buffer = fileToBuffer("test.rs"); 
     //setErrorFile(buffer);
     printf("File content:\n%s\n\n", buffer);
     /* LEXING STAGE */

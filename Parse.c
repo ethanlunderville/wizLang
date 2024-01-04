@@ -33,11 +33,17 @@ long programListCapacity = BASE_PROGRAM_LIST_SIZE;
 // LEXING RELATED FUNCTIONS
 ////////////////////////////////////////////////////////////////
 
+// Supports lex when mapping the string representation of keywords to their Tokens.
+
 enum Tokens getKeywordFromString(char * str) {
     if (strcmp(str, "if") == 0) return IF;
     if (strcmp(str, "while") == 0) return WHILE;
     if (strcmp(str, "else") == 0) return ELSE;
+    if (strcmp(str, "def") == 0) return DEF;
+    return -1;
 }
+
+// Used for debug print out
 
 const char* getTokenName(enum Tokens token) {
     switch (token) {
@@ -74,28 +80,9 @@ const char* getTokenName(enum Tokens token) {
     }
 }
 
-int isAKeyWord(char * str) {
-    for (int i = 0 ; i < KEYWORD_LISTSIZE ; i++) {
-        if (strcmp(str, keywords[i]) == 0) 
-            return 1;
-    }
-    return 0;
-}
-
 char checkNext(char* buffer, long index, char c) {
     return c == buffer[index+1];
 }
-
-/*
-
-    Lexer: STAGE 1
-
-    Description:
-
-    Main function to perform lexical analysis. Tokens
-    are stored in the program list for the parser.
-
-*/
 
 // Allocates space for and returns a number lexeme.
 
@@ -125,6 +112,7 @@ char * createStringLexeme(long * bufferIndex, char * buffer) {
     return lexeme;
 }
 
+// Allocates space for and returns a identifier lexeme.
 
 char * createAlphaLexeme(long * bufferIndex, char * buffer) {
     long currentIndex = *bufferIndex;
@@ -138,6 +126,16 @@ char * createAlphaLexeme(long * bufferIndex, char * buffer) {
     return lexeme;
 }
 
+/*
+
+    Lexer: STAGE 1
+
+    Description:
+
+    Main function to perform lexical analysis. Tokens
+    are stored in the program list for the parser.
+
+*/
 
 void lex(char* buffer, struct TokenStruct * programList) {
     long lineNo = 1;
@@ -228,10 +226,11 @@ void lex(char* buffer, struct TokenStruct * programList) {
                 addToProgramList(createNumberLexeme(&i, buffer), NUMBER, lineNo ,NUM);
             } else if (isalpha(buffer[i])) {
                 char * alphaLex = createAlphaLexeme(&i, buffer);
-                isAKeyWord(alphaLex) ? 
-                addToProgramList(alphaLex, NONE, lineNo ,getKeywordFromString(alphaLex)) 
-                : 
-                addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
+                if (getKeywordFromString(alphaLex) == -1) {
+                    addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
+                    continue;
+                }
+                addToProgramList(alphaLex, NONE, lineNo ,getKeywordFromString(alphaLex)); 
             }
         }
     }
@@ -290,6 +289,32 @@ void freeProgramList(struct TokenStruct * programList, long size) {
 // PARSING RELATED FUNCTIONS
 ////////////////////////////////////////////////////////////////
 
+// Parses every type of identifier
+
+struct AST* sIdentTree() {
+    struct AST* identTree = initAST(getCurrentTokenStruct());
+    scan();
+    switch (getCurrentTokenStruct()->token) {
+        case LEFTPARENTH: 
+        {
+        identTree->token->token = FUNCTIONCALLIDENT;
+        scan();
+        while (!isCurrentToken(RIGHTPARENTH)){
+            addChild(identTree, sIdentTree());        
+            if (!isCurrentToken(RIGHTPARENTH)) 
+                expect(COMMA);
+        }
+        break;
+        }
+        default: {
+            break;
+        }
+    }
+    return identTree;
+}
+
+// Parses { }
+
 struct AST* sBlock() {
     struct AST * bTree = initAST(getCurrentTokenStruct());
     expect(OPENBRACE);
@@ -304,6 +329,8 @@ struct AST* sBlock() {
     expect(CLOSEBRACE);
     return bTree;
 }
+
+// Parses IF/ELSE and WHILE 
 
 struct AST* sConditional() {
     struct AST * condTree = initAST(getCurrentTokenStruct());
@@ -341,6 +368,24 @@ struct AST* sConditional() {
     return condTree;
 } 
 
+struct AST* sFunctionDeclaration() {
+    struct AST* defTree = initAST(getCurrentTokenStruct());
+    expect(DEF);
+    struct AST* identTree = initAST(getCurrentTokenStruct());
+    expect(IDENTIFIER);
+    addChild(defTree, identTree);
+    expect(LEFTPARENTH);
+    while (!isCurrentToken(RIGHTPARENTH)) {
+        addChild(identTree, initAST(getCurrentTokenStruct()));
+        scan();
+        if (!isCurrentToken(RIGHTPARENTH)) 
+            expect(COMMA);
+    }
+    scan();
+    addChild(identTree, sBlock());
+    return defTree;
+}
+
 /*
 
     Parser: STAGE 2
@@ -361,10 +406,12 @@ struct AST* parse() {
             addChild(aTree, sExpression());
         else if (onConditionalToken())
             addChild(aTree, sConditional());
+        else if (onFunctionDeclaration())
+            addChild(aTree, sFunctionDeclaration());
         else if (getCurrentTokenStruct()->token == ENDLINE)
             scan();
         else if (getCurrentTokenStruct()->token == ENDOFFILE)
-            scan();
+            break;
         else
             ERROR(PARSE,"Unexpected symbol", getCurrentLine());
     }
@@ -395,6 +442,12 @@ bool isCurrentToken(enum Tokens token) {
     if (programListSize <= currentProgramListCounter)
         return false;
     return token == programList[currentProgramListCounter].token;
+}
+
+// Parser utility 
+
+bool onFunctionDeclaration() {
+    return isCurrentToken(DEF);
 }
 
 // Parser utility
@@ -576,7 +629,7 @@ struct AST * sExpression() {
         if (!onOperandToken())
             FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
         if (isCurrentToken(IDENTIFIER)) {
-            push(&operandStack, initAST(getCurrentTokenStruct()));
+            push(&operandStack, sIdentTree());
             scan();
         } else if (isCurrentToken(LEFTPARENTH)){
             scan();

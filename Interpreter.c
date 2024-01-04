@@ -33,11 +33,36 @@ extern struct wizObject * wizSlab;
 struct wizObject* stack[STACK_LIMIT];
 int stackSize = 0;
 
+// Stack frame and program counter stacks
+struct lineCounterStack stackFrames;
+struct lineCounterStack returnLines;
+
 // Approaches program size as the program executes.
 long instructionIndex = 0;
 
 // Current program context
 struct Context* context;
+
+long popCounterStack(struct lineCounterStack* counterStack) {
+    if (counterStack->stackSize == 0) {
+        puts("Attempted to pop empty counter stack!");
+        exit(EXIT_FAILURE);
+    }
+    long element = counterStack->stack[counterStack->stackSize-1];
+    counterStack->stack[counterStack->stackSize-1] = 0;   
+    counterStack->stackSize--;
+    return element;
+}
+
+void pushCounterStack(struct lineCounterStack* counterStack, long val) {
+    if (counterStack->stackSize == STACK_LIMIT) {
+        puts("Stack Overflow!");
+        exit(EXIT_FAILURE);
+    }
+    // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
+    counterStack->stack[counterStack->stackSize] = val;
+    counterStack->stackSize++;
+}
 
 /*
 
@@ -165,17 +190,28 @@ void* binOpCode() {
         case ASSIGNMENT: 
         {
         struct wizObject * temp = pop();
-        assert(temp->type == IDENTIFIER);
-        struct wizObject ** ref = getObjectRefFromIdentifier(temp->value.strValue);
+        struct wizObject * ident = pop();
+        assert(ident->type == IDENTIFIER);
+        struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
         if (ref == NULL)
-             ref = declareSymbol(temp->value.strValue);
-        *ref = pop();
+             ref = declareSymbol(ident->value.strValue);
+        *ref = temp;
         }
         case PIPE: {break;};
         default: break;
     }
     
     return NULL;
+}
+
+void * fAssign() {
+    struct wizObject * ident = pop();
+    struct wizObject * temp = pop();
+    assert(ident->type == IDENTIFIER);
+    struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
+    if (ref == NULL)
+         ref = declareSymbol(ident->value.strValue);
+    *ref = temp;
 }
 
 void * jump() {
@@ -188,6 +224,18 @@ void * jumpNe() {
         instructionIndex = (long)fetchArg(&program[instructionIndex],0)->value.numValue - 2;
 }
 
+void * createStackFrame() {
+    pushCounterStack(&stackFrames, stackSize);
+}
+
+void * call() {
+    pushCounterStack(&returnLines, instructionIndex);
+    instructionIndex = (long)fetchArg(&program[instructionIndex],0)->value.numValue - 2;
+}
+
+void * fReturn() {
+
+}
 
 /*
 
@@ -200,10 +248,10 @@ void * jumpNe() {
 */
 
 void interpret() {
-    initContext();
     while (instructionIndex < programSize) {
         program[instructionIndex].associatedOperation();
         instructionIndex++;
         dumpStack();
+        //printContext();
     }
 }

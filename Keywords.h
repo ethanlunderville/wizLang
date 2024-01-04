@@ -51,6 +51,7 @@ enum Tokens {
     NUM, 
     STRING,
     IDENTIFIER,
+    FUNCTIONCALLIDENT,
     /*END OPERANDS*/
     ENDOPERANDS,
     COMMA,
@@ -63,12 +64,14 @@ enum Tokens {
     OPENBRACE,
     CLOSEBRACE,
 
+    DEF,
+
     ENDOFFILE
 };
 
-#define KEYWORD_LISTSIZE 3
+#define KEYWORD_LISTSIZE 4
 static char* keywords[KEYWORD_LISTSIZE] = {
-    "if", "else", "while"
+    "if", "else", "while", "def"
 };
 
 const char* getTokenName(enum Tokens token);
