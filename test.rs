@@ -1,10 +1,12 @@
-def test(param, other_param) {
-    t = param + other_param
-    if (t > 5) {
-        return t
+def test(n) {
+    if (n == 0) {
+        return 0
+    } else {
+        if (n == 1) {
+            return 1
+        } else {
+            return test(n - 1) + test(n - 2)
+        }
     }
-    return 1
 }
-
-x = test(6,2)
-println(x);
+println(test(10))

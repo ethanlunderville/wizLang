@@ -292,14 +292,10 @@ void codeGenWalker(struct AST * aTree) {
         }
         case OPENBRACE:
         {   
-            programAdder(pushScope);
-            for (int i = 0 ; i < aTree->childCount ; i++) {
+            for (int i = 0 ; i < aTree->childCount ; i++)
                 codeGenWalker(aTree->children[i]);
-            }
-            programAdder(popScope);
             break;
         }
-
         case DEF:
         {
     
@@ -329,7 +325,6 @@ void codeGenWalker(struct AST * aTree) {
                 value.opValue = ASSIGNMENT;
                 addArg(programAdder(fAssign), initWizArg(value, BINOP));
             }
-            brek();
             // Process related code block
             for (int i = 0; i < aTree->children[0]->children[aTree->children[0]->childCount - 1]->childCount;i++)
                 codeGenWalker(aTree->children[0]->children[aTree->children[0]->childCount - 1]->children[i]);

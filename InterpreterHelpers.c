@@ -37,12 +37,12 @@ void processPlusOperator(
         opArgRef->type = STRINGTYPE;
         memcpy(opArgRef->value.strValue,val1->value.strValue,oldVal1StrLength);
         memcpy(opArgRef->value.strValue + oldVal1StrLength, val2->value.strValue, oldVal2StrLength);
-        push();
+        pushInternal(opArgRef);
         return;
     } else if (val1->type == NUMBER && val2->type == NUMBER) {
         opArgRef->value.numValue = (val1->value.numValue + val2->value.numValue);
         opArgRef->type = NUMBER;
-        push();
+        pushInternal(opArgRef);
         return; 
     }
     char doubleBuff[100];
@@ -59,7 +59,7 @@ void processPlusOperator(
         memcpy(opArgRef->value.strValue, val1->value.strValue, val1StrLength);
         memcpy(opArgRef->value.strValue + val1StrLength,doubleBuff, doubleStrLength);
         opArgRef->type = STRINGTYPE;
-        push();
+        pushInternal(opArgRef);
     } else if (val1->type == NUMBER && val2->type == STRINGTYPE) {
         int maxLength = snprintf(NULL, 0, "%f", val1->value.numValue) + 1;
         snprintf(doubleBuff, maxLength, "%f", val1->value.numValue);
@@ -72,7 +72,7 @@ void processPlusOperator(
         memcpy(opArgRef->value.strValue, doubleBuff, doubleStrLength);
         memcpy(opArgRef->value.strValue + doubleStrLength, val2->value.strValue, val2StrLength);
         opArgRef->type = STRINGTYPE;
-        push();
+        pushInternal(opArgRef);
     }
     return;
 }

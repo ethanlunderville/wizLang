@@ -22,6 +22,7 @@ int addToContext(char * identifier, struct wizObject * test);
 void* pushScope();
 void* popScope();
 struct wizObject ** getObjectRefFromIdentifier(char * ident);
+struct wizObject ** getObjectRefFromIdentifierLocal(char * ident);
 struct wizObject ** declareSymbol(char * ident);
 
 #endif

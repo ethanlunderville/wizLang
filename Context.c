@@ -27,6 +27,7 @@ void* popScope() {
     if (context->cPtr == NULL)
         FATAL_ERROR(LANGUAGE, "ATTEMPTED TO POP EMPTY SCOPE", 0);
     context = context->cPtr;
+    printContext();
 }
 
 struct wizObject ** getObjectRefFromIdentifier(char * ident) {
@@ -37,6 +38,14 @@ struct wizObject ** getObjectRefFromIdentifier(char * ident) {
                 return &ref->map[i].value;
         }
         ref = ref->cPtr;
+    } 
+    return NULL;
+}
+
+struct wizObject ** getObjectRefFromIdentifierLocal(char * ident) {
+   for (int i = 0 ; i < context->currentIndex ; i++) {
+        if (strcmp(context->map[i].identifier, ident)==0)
+            return &context->map[i].value;
     } 
     return NULL;
 }

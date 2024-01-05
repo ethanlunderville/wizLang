@@ -301,7 +301,7 @@ struct AST* sIdentTree() {
         identTree->token->token = FUNCTIONCALLIDENT;
         scan();
         while (!isCurrentToken(RIGHTPARENTH)){
-            addChild(identTree, sIdentTree());        
+            addChild(identTree, sExpression());        
             if (!isCurrentToken(RIGHTPARENTH)) 
                 expect(COMMA);
         }

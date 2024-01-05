@@ -58,6 +58,16 @@ struct wizObject * fetchArg (long opCodeIndex, int argNum) {
 }
 
 
+int printCounterStack(struct lineCounterStack* counterStack) {
+    puts("|---------Dump-----------|");
+    int i = counterStack->stackSize - 1;
+    for (; i > -1; i--) {
+        printf("%li\n", counterStack->stack[i]);
+        puts(" ------------------------");
+    }
+    return i;
+}   
+
 long popCounterStack(struct lineCounterStack* counterStack) {
     if (counterStack->stackSize == 0) {
         puts("Attempted to pop empty counter stack!");
@@ -81,9 +91,10 @@ void pushCounterStack(struct lineCounterStack* counterStack, long val) {
 
 // Stack dumper for debugging.
 
-void dumpStack() {
+int dumpStack() {
     puts("|---------Dump-----------|");
-    for (int i = stackSize ; i > -1; i--) {
+    int i = stackSize;
+    for (; i > -1; i--) {
         if (stack[i] == NULL) 
             continue;
         switch (stack[i]->type) {
@@ -100,6 +111,7 @@ void dumpStack() {
         }
         puts(" ------------------------");
     }    
+    
 }
 
 // Pops a value off of the Runtime Stack.
@@ -113,6 +125,17 @@ struct wizObject* pop() {
     stack[stackSize-1] = NULL;   
     stackSize--;
     return element;
+}
+
+void* pushInternal(struct wizObject* arg) {
+    if (stackSize == STACK_LIMIT) {
+        puts("Stack Overflow!");
+        exit(EXIT_FAILURE);
+    }
+    // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
+    stack[stackSize] = arg;
+    stackSize++;
+    return NULL;
 }
 
 // Pushes a value onto the Runtime Stack.
@@ -146,13 +169,16 @@ void* pushLookup() {
 // Handles binary operations.
 
 #define OP_EXECUTION_MACRO(op) \
-            rightHand = pop()->value.numValue; \
-            fetchArg(instructionIndex,0)->value.numValue = ( \
-                pop()->value.numValue op rightHand \
-            ); \
-            fetchArg(instructionIndex,0)->type = NUMBER; \
-            push(); \
-            break;
+    { \
+    struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject)); \
+    wizInplace->type = NUMBER; \
+    union TypeStore temp; \
+    rightHand = pop()->value.numValue; \
+    temp.numValue = pop()->value.numValue op rightHand; \
+    wizInplace->value = temp; \
+    pushInternal(wizInplace); \
+    break; \
+    } 
 
 void* binOpCode() {
     enum Tokens operation = fetchArg(instructionIndex,0)->value.opValue;
@@ -162,8 +188,8 @@ void* binOpCode() {
         {   
             struct wizObject* val2 = pop();
             struct wizObject* val1 = pop();
-            struct wizObject* opArgRef = fetchArg(instructionIndex,0);
-            processPlusOperator(val1, val2, opArgRef);
+            struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject));
+            processPlusOperator(val1, val2, wizInplace);
             break;
         }
         case SUBTRACT: OP_EXECUTION_MACRO(-);
@@ -171,12 +197,13 @@ void* binOpCode() {
         case DIVIDE: OP_EXECUTION_MACRO(/);
         case POWER:
         {
-            double rightHand = pop()->value.numValue;
-            fetchArg(instructionIndex,0)->value.numValue = (
-                pow(pop()->value.numValue, rightHand)
-            );
-            fetchArg(instructionIndex,0)->type = NUMBER;
-            push();
+            struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject));
+            wizInplace->type = NUMBER;
+            union TypeStore temp;
+            rightHand = pop()->value.numValue;
+            temp.numValue = pow(pop()->value.numValue, rightHand);
+            wizInplace->value = temp;
+            pushInternal(wizInplace);
             break;
         }
         case OR: OP_EXECUTION_MACRO(||);
@@ -192,7 +219,7 @@ void* binOpCode() {
         struct wizObject * temp = pop();
         struct wizObject * ident = pop();
         assert(ident->type == IDENTIFIER);
-        struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
+        struct wizObject ** ref = getObjectRefFromIdentifierLocal(ident->value.strValue);
         if (ref == NULL)
              ref = declareSymbol(ident->value.strValue);
         *ref = temp;
@@ -208,7 +235,7 @@ void * fAssign() {
     struct wizObject * ident = pop();
     struct wizObject * temp = pop();
     assert(ident->type == STRINGTYPE);
-    struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
+    struct wizObject ** ref = getObjectRefFromIdentifierLocal(ident->value.strValue);
     if (ref == NULL)
          ref = declareSymbol(ident->value.strValue);
     *ref = temp;
@@ -229,6 +256,7 @@ void * createStackFrame() {
 }
 
 void * call() {
+    brek();
     char* functionName = fetchArg(instructionIndex,0)->value.strValue;
     BuiltInFunctionPtr potentialBuiltin = getBuiltin(functionName);
     if (potentialBuiltin != 0) {

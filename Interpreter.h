@@ -55,6 +55,7 @@ void codeGenWalker(struct AST * aTree);
 struct wizObject* pop();
 
 void* createStackFrame();
+void* pushInternal(struct wizObject* arg);
 void * fReturnNoArg();
 void* fReturn();
 void* call();
@@ -65,7 +66,7 @@ void* jump();
 void* jumpNe();
 void* pushLookup();
 
-void dumpStack();
+int dumpStack();
 void interpret();
 
 // Helpers
