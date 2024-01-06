@@ -182,7 +182,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
                 addToProgramList("!=",BINOP,lineNo,NOTEQUAL);
             }
             else { 
-                ERROR(PARSE, "Expected = after !", lineNo);
+                FATAL_ERROR(PARSE, lineNo, "Expected = after !");
             }
             break;
         }
@@ -200,7 +200,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
                 i++;
                 addToProgramList("&&",BINOP,lineNo, AND);
             } else {
-                ERROR(PARSE, "Expected & after &", lineNo);
+                FATAL_ERROR(PARSE, lineNo, "Expected & after &");
             }
             break;
         }
@@ -297,17 +297,17 @@ struct AST* sIdentTree() {
     scan();
     switch (getCurrentTokenStruct()->token) {
         case LEFTPARENTH: 
-        {
-        identTree->token->token = FUNCTIONCALLIDENT;
-        scan();
-        while (!isCurrentToken(RIGHTPARENTH)){
-            addChild(identTree, sExpression());        
-            if (!isCurrentToken(RIGHTPARENTH)) 
-                expect(COMMA);
-        }
-        scan();
-        break;
-        }
+            {
+            identTree->token->token = FUNCTIONCALLIDENT;
+            scan();
+            while (!isCurrentToken(RIGHTPARENTH)){
+                addChild(identTree, sExpression());        
+                if (!isCurrentToken(RIGHTPARENTH)) 
+                    expect(COMMA);
+            }
+            scan();
+            break;
+            }
         default: {
             break;
         }
@@ -348,7 +348,7 @@ struct AST* sConditional() {
     struct AST * condTree = initAST(getCurrentTokenStruct());
     switch (getCurrentTokenStruct()->token) {
         case IF:
-        {
+            {
             scan();
             expect(LEFTPARENTH);
             addChild(condTree, sExpression());
@@ -356,26 +356,32 @@ struct AST* sConditional() {
             addChild(condTree, sBlock());
             if (!isCurrentToken(ELSE)) 
                 break;
+            struct AST* elseTree = initAST(getCurrentTokenStruct());
             scan();
-            addChild(condTree, sBlock());
+            if (isCurrentToken(IF)) 
+                addChild(elseTree, sConditional());    
+            else 
+                addChild(elseTree, sBlock());
+            addChild(condTree,elseTree);
             break;
-        } 
+            } 
         case WHILE:
-        {
+            {
             scan();
             expect(LEFTPARENTH);
             addChild(condTree, sExpression());
             expect(RIGHTPARENTH);
             addChild(condTree, sBlock());
             break;
-        }
-        default: {
+            }
+        default: 
+            {
             FATAL_ERROR(
                 PARSE,
-                "Internal: Unrecognized Conditional", 
-                getCurrentLine()
+                getCurrentLine(),
+                "Unrecognized Conditional"
             );
-        }
+            }
     }
     return condTree;
 } 
@@ -425,7 +431,7 @@ struct AST* parse() {
         else if (getCurrentTokenStruct()->token == ENDOFFILE)
             break;
         else
-            ERROR(PARSE,"Unexpected symbol", getCurrentLine());
+            FATAL_ERROR(PARSE, getCurrentLine(), "Unexpected symbol");
     }
     return aTree;
 }
@@ -551,8 +557,8 @@ static void push(struct ASTStack * stack, struct AST* aTree) {
     if (AST_STACKCAP == stack->size)
         FATAL_ERROR(
             LANGUAGE,
-            "STACK OVERFLOW FROM OVERLY LARGE EXPRESSION",
-            getCurrentLine()
+            getCurrentLine(),
+            "STACK OVERFLOW FROM OVERLY LARGE EXPRESSION"
         );
     stack->stack[stack->size] = aTree;
     stack->size++;
@@ -564,8 +570,8 @@ static struct AST* pop(struct ASTStack * stack) {
     if (0 == stack->size)
         FATAL_ERROR(
             LANGUAGE,
-            "EXPRESSION PARSER TRIED TO POP A STACK WITH NOTHING IN IT",
-            getCurrentLine()
+            getCurrentLine(),
+            "EXPRESSION PARSER TRIED TO POP A STACK WITH NOTHING IN IT"
         );
     stack->size--;
     return stack->stack[stack->size];
@@ -577,8 +583,8 @@ static struct AST* peek(struct ASTStack * stack) {
     if (stack->size == 0)
         FATAL_ERROR(
             LANGUAGE,
-            "EXPRESSION PARSER TRIED TO PEEK INTO AN EMPTY STACK",
-            getCurrentLine()
+            getCurrentLine(),
+            "EXPRESSION PARSER TRIED TO PEEK INTO AN EMPTY STACK"
         );
     return stack->stack[stack->size - 1];
 }
@@ -637,9 +643,11 @@ struct AST * sExpression() {
     struct ASTStack operandStack;
     operandStack.size = 0;
     while (1) {
+#ifdef OUTPUT_EXPRESSIONS 
         printf("%s ", getCurrentTokenStruct()->lexeme);
+#endif
         if (!onOperandToken())
-            FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
+            FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
         if (isCurrentToken(IDENTIFIER)) {
             push(&operandStack, sIdentTree());
         } else if (isCurrentToken(LEFTPARENTH)){
@@ -652,7 +660,9 @@ struct AST * sExpression() {
         } else if (onExpressionBreaker()) { 
             break;
         }
+#ifdef OUTPUT_EXPRESSIONS 
         printf("%s ", getCurrentTokenStruct()->lexeme);
+#endif
         if (onOperatorToken()) {
             struct AST* opTree = initAST(getCurrentTokenStruct());
             //WHILE THE TOP OPERATOR ON THE TOP OF THE STACK HAS HIGHER PRECEDENCE THAN THE CURRENT OPERATOR
@@ -664,12 +674,11 @@ struct AST * sExpression() {
         } else if (onExpressionBreaker()){
             break;
         } else {
-            FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
+            FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
         }   
     }
-    puts("");
     if (operandStack.size < 1) 
-        FATAL_ERROR(PARSE, "Malformed expression", getCurrentLine());
+        FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
     while (operandStack.size != 1)
         createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(&operandStack, &operatorStack);
     return pop(&operandStack);

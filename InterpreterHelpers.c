@@ -23,11 +23,20 @@ int floatStrContainsDecimal(char * str) {
     return 0;
 }
 
+/*
+
+    Handles how to the + operator behaves depending on
+    the type of its operands
+
+*/
+
 void processPlusOperator(
     struct wizObject* val1,
     struct wizObject* val2,
     struct wizObject* opArgRef
 ) {
+    char doubleBuff[100];
+    memset(doubleBuff,'\0',100);
     if (val1->type == STRINGTYPE && val2->type == STRINGTYPE) {
         int oldVal1StrLength = strlen(val1->value.strValue);
         int oldVal2StrLength = strlen(val2->value.strValue);
@@ -38,16 +47,11 @@ void processPlusOperator(
         memcpy(opArgRef->value.strValue,val1->value.strValue,oldVal1StrLength);
         memcpy(opArgRef->value.strValue + oldVal1StrLength, val2->value.strValue, oldVal2StrLength);
         pushInternal(opArgRef);
-        return;
     } else if (val1->type == NUMBER && val2->type == NUMBER) {
         opArgRef->value.numValue = (val1->value.numValue + val2->value.numValue);
         opArgRef->type = NUMBER;
-        pushInternal(opArgRef);
-        return; 
-    }
-    char doubleBuff[100];
-    memset(doubleBuff,'\0',100);
-    if (val1->type == STRINGTYPE && val2->type == NUMBER) { /*CHUNKY ... I LOVE C*/
+        pushInternal(opArgRef); 
+    } else if (val1->type == STRINGTYPE && val2->type == NUMBER) { /*CHUNKY ... I LOVE C*/
         int maxLength = snprintf(NULL, 0, "%f", val2->value.numValue) + 1;
         snprintf(doubleBuff, maxLength, "%f", val2->value.numValue);
         if (floatStrContainsDecimal(doubleBuff))

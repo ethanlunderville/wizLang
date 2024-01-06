@@ -53,6 +53,10 @@ struct Context* context;
 
 */
 
+long fetchCurrentLine() {
+    return program[instructionIndex].lineNumber;
+}
+
 struct wizObject * fetchArg (long opCodeIndex, int argNum) {
     return &wizSlab[program[opCodeIndex].argIndexes[argNum]];
 }
@@ -98,16 +102,16 @@ int dumpStack() {
         if (stack[i] == NULL) 
             continue;
         switch (stack[i]->type) {
-            case STRINGTYPE:
-                printf(
-                    " %s\n", 
-                    stack[i]->value.strValue
-                ); break;
-            case NUMBER:
-                printf(
-                    " %f\n", 
-                    stack[i]->value.numValue
-                ); break;
+        case STRINGTYPE:
+            printf(
+                " %s\n", 
+                stack[i]->value.strValue
+            ); break;
+        case NUMBER:
+            printf(
+                " %f\n", 
+                stack[i]->value.numValue
+            ); break;
         }
         puts(" ------------------------");
     }    
@@ -185,18 +189,15 @@ void* binOpCode() {
     double rightHand;
     switch (operation) {
         case ADD: 
-        {   
+            {   
             struct wizObject* val2 = pop();
             struct wizObject* val1 = pop();
             struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject));
             processPlusOperator(val1, val2, wizInplace);
             break;
-        }
-        case SUBTRACT: OP_EXECUTION_MACRO(-);
-        case MULTIPLY: OP_EXECUTION_MACRO(*);
-        case DIVIDE: OP_EXECUTION_MACRO(/);
+            }
         case POWER:
-        {
+            {
             struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject));
             wizInplace->type = NUMBER;
             union TypeStore temp;
@@ -205,7 +206,24 @@ void* binOpCode() {
             wizInplace->value = temp;
             pushInternal(wizInplace);
             break;
-        }
+            }
+        case ASSIGNMENT: 
+            {
+            struct wizObject * temp = pop();
+            struct wizObject * ident = pop();
+            assert(ident->type == IDENTIFIER);
+            struct wizObject ** ref = getObjectRefFromIdentifierLocal(ident->value.strValue);
+            if (ref == NULL)
+                 ref = declareSymbol(ident->value.strValue);
+            *ref = temp;
+            }
+        case PIPE: 
+            {
+            break;
+            };
+        case SUBTRACT: OP_EXECUTION_MACRO(-);
+        case MULTIPLY: OP_EXECUTION_MACRO(*);
+        case DIVIDE: OP_EXECUTION_MACRO(/);
         case OR: OP_EXECUTION_MACRO(||);
         case AND: OP_EXECUTION_MACRO(&&);
         case LESSEQUAL: OP_EXECUTION_MACRO(<=);
@@ -214,20 +232,8 @@ void* binOpCode() {
         case LESSTHAN: OP_EXECUTION_MACRO(<);
         case NOTEQUAL: OP_EXECUTION_MACRO(!=);
         case EQUAL: OP_EXECUTION_MACRO(==);
-        case ASSIGNMENT: 
-        {
-        struct wizObject * temp = pop();
-        struct wizObject * ident = pop();
-        assert(ident->type == IDENTIFIER);
-        struct wizObject ** ref = getObjectRefFromIdentifierLocal(ident->value.strValue);
-        if (ref == NULL)
-             ref = declareSymbol(ident->value.strValue);
-        *ref = temp;
-        }
-        case PIPE: {break;};
         default: break;
     }
-    
     return NULL;
 }
 
@@ -256,7 +262,6 @@ void * createStackFrame() {
 }
 
 void * call() {
-    brek();
     char* functionName = fetchArg(instructionIndex,0)->value.strValue;
     BuiltInFunctionPtr potentialBuiltin = getBuiltin(functionName);
     if (potentialBuiltin != 0) {

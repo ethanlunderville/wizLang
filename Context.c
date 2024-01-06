@@ -10,11 +10,11 @@
 extern struct Context* context;
 
 struct Context* initContext() {
-    struct Context* newCntxt = (struct Context*) malloc(sizeof(struct Context));
-    newCntxt->cPtr = NULL;
-    memset(newCntxt->map,0,BASE_SCOPE_SIZE * sizeof(struct IdentifierMap));
-    newCntxt->currentIndex = 0;
-    return newCntxt;
+    struct Context* newContext = (struct Context*) malloc(sizeof(struct Context));
+    memset(newContext->map,0,BASE_SCOPE_SIZE * sizeof(struct IdentifierMap));
+    newContext->cPtr = NULL;
+    newContext->currentIndex = 0;
+    return newContext;
 }
 
 void* pushScope() {
@@ -25,9 +25,8 @@ void* pushScope() {
 
 void* popScope() {
     if (context->cPtr == NULL)
-        FATAL_ERROR(LANGUAGE, "ATTEMPTED TO POP EMPTY SCOPE", 0);
+        FATAL_ERROR(LANGUAGE, 0, "ATTEMPTED TO POP EMPTY SCOPE");
     context = context->cPtr;
-    printContext();
 }
 
 struct wizObject ** getObjectRefFromIdentifier(char * ident) {
@@ -43,16 +42,15 @@ struct wizObject ** getObjectRefFromIdentifier(char * ident) {
 }
 
 struct wizObject ** getObjectRefFromIdentifierLocal(char * ident) {
-   for (int i = 0 ; i < context->currentIndex ; i++) {
+    for (int i = 0 ; i < context->currentIndex ; i++) 
         if (strcmp(context->map[i].identifier, ident)==0)
             return &context->map[i].value;
-    } 
     return NULL;
 }
 
 struct wizObject ** declareSymbol(char * ident) {
     if (context->currentIndex - 1 >= BASE_SCOPE_SIZE)
-        FATAL_ERROR(RUNTIME,"TRIED TO DECLARE TOO MANY SYMBOLS",0);
+        FATAL_ERROR(RUNTIME,fetchCurrentLine() ,"TRIED TO DECLARE TOO MANY SYMBOLS");
     context->map[context->currentIndex].identifier = ident;
     context->currentIndex++;
     return &context->map[context->currentIndex-1].value;
@@ -67,9 +65,18 @@ void printContext() {
             for (int j = 0 ; j < count ; j++) 
                 printf(" ");
             printf("%s : ", ref->map[i].identifier);
-            switch (ref->map[i].value->type) {
-                case STRINGTYPE: printf("%s\n",ref->map[i].value->value.strValue); break;
-                case NUMBER: printf("%f\n",ref->map[i].value->value.numValue); break;
+            switch (ref->map[i].value->type) 
+            {
+            case STRINGTYPE: 
+                {
+                printf("%s\n",ref->map[i].value->value.strValue); 
+                break;
+                }
+            case NUMBER: 
+                {
+                printf("%f\n",ref->map[i].value->value.numValue); 
+                break;
+                }
             }
             for (int j = 0 ; j < count ; j++) 
                 printf(" ");

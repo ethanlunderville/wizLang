@@ -19,6 +19,7 @@
 #include "Parse.h"
 #include "Interpreter.h"
 #include "Error.h"
+#include "Switchboard.h"
 
 extern long programListSize;
 extern struct TokenStruct * programList;
@@ -43,7 +44,7 @@ long getFileSize(FILE *file) {
 char* fileToBuffer(char * fileName) {
     FILE *file = fopen(fileName, "rb");
     if (file == NULL) {
-        perror("Error opening file");
+        perror("A PROBLEM OCCURED WHEN OPENING SOURCE FILE");
         exit(EXIT_FAILURE);
     }
     long fileSize = getFileSize(file);
@@ -57,22 +58,32 @@ char* fileToBuffer(char * fileName) {
 
 int main () {
     char* buffer = fileToBuffer("test.rs"); 
-    //setErrorFile(buffer);
+    setErrorFile(buffer);
+#ifdef OUTPUT_FILE
     printf("File content:\n%s\n\n", buffer);
+#endif
     /* LEXING STAGE */
     lex(buffer, programList);
+#ifdef OUTPUT_TOKENS
     puts("*** PRINTING LEXEMES ***");
     printLexemes(programList, programListSize);
     puts("*** FINISHED PRINTING LEXEMES ***");
+#endif
     /* PARSING STAGE */
     struct AST* aTree = parse();
+#ifdef OUTPUT_TREE
     puts("*** PRINTING AST ***");
     printAST(aTree);
     puts("*** FINISHED PRINTING AST ***");
-    puts("*** STARTING CODEGEN ***");
+#endif
+    /* CODE GENERATION */
     codeGen(aTree);
-    puts("*** ENDING CODEGEN ***");
-    puts("*** PROGRAM OUTPUT ***");
+#ifdef OUTPUT_BYTECODE
+    puts("*** PRINTING BYTECODES ***");
+    printOpCodes();
+    puts("*** END PRINTING BYTECODES ***");
+#endif
+    /*PROGRAM EXECUTES*/
     interpret();
     deallocateAST(aTree);
     freeProgramList(programList, programListSize);

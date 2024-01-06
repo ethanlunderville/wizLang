@@ -13,17 +13,18 @@ BuiltInFunctionPtr getBuiltin(char * funcName) {
 
 void* fPrint() {
     struct wizObject* val = pop();
-    switch (val->type) {
-        case NUMBER:
-            {
-            printf("%f",val->value.numValue);
-            break;
-            }
-        case STRINGTYPE: 
-            {
-            printf("%s",val->value.strValue);
-            break;
-            }
+    switch (val->type) 
+    {
+    case NUMBER:
+        {
+        printf("%f",val->value.numValue);
+        break;
+        }
+    case STRINGTYPE: 
+        {
+        printf("%s",val->value.strValue);
+        break;
+        }
     }
     puts("");
 }

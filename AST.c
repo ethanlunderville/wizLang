@@ -56,9 +56,9 @@ void addChild(struct AST* tree, struct AST* child) {
 struct AST* initAST(struct TokenStruct * token) {
     struct AST* node = (struct AST*) malloc(sizeof(struct AST));
     node->childLimit = BASECHILDNUMBER;
-    node->children = (struct AST**) malloc(sizeof(struct AST**) * node->childLimit);
     node->childCount = 0;
     node->token = token;
+    node->children = (struct AST**) malloc(sizeof(struct AST**) * node->childLimit);
     return node;
 }
 

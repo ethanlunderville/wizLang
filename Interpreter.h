@@ -38,6 +38,7 @@ struct wizObject {
 };
 
 struct opCode {
+    long lineNumber;
     int currentIndex;
     long argIndexes[OPCODE_ARGLIMIT];
     ByteCodeFunctionPtr associatedOperation;
@@ -48,15 +49,18 @@ struct lineCounterStack {
     int stackSize;
 };
 
+long fetchCurrentLine();
+
 struct wizObject * fetchArg(long opCodeIndex, int argNum);
 struct opCode * codeGen(struct AST * aTree);
 void codeGenWalker(struct AST * aTree);
+void printOpCodes();
 
 struct wizObject* pop();
+void* pushInternal(struct wizObject* arg);
 
 void* createStackFrame();
-void* pushInternal(struct wizObject* arg);
-void * fReturnNoArg();
+void* fReturnNoArg();
 void* fReturn();
 void* call();
 void* fAssign();
@@ -70,6 +74,7 @@ int dumpStack();
 void interpret();
 
 // Helpers
+int floatStrContainsDecimal(char * str);
 int removeZerosFromDoubleString(char * str);
 void processPlusOperator(struct wizObject* val1, struct wizObject* val2, struct wizObject* opArgRef);
 

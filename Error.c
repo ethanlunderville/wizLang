@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include "Error.h"
 
 static char* fileBuffer;
@@ -9,12 +10,7 @@ void setErrorFile(char* buffer) {
     fileBuffer = buffer;
 }
 
-void FATAL_ERROR(enum ErrorType err, char* message, long line) {
-    ERROR(err, message, line);
-    exit(1);
-}
-
-void ERROR(enum ErrorType err, char* message, long line) {
+void FATAL_ERROR(enum ErrorType err, long line, const char* format, ...) {
     puts("");
     switch (err) {
         case PARSE: printf("\033[1;31mPARSE ERROR :: \033[0m"); break;
@@ -22,11 +18,31 @@ void ERROR(enum ErrorType err, char* message, long line) {
         case RUNTIME: printf("\033[1;31mRUNTIME ERROR :: \033[0m"); break;
         case LANGUAGE: printf("\033[1;31mLANGUAGE ERROR :: \033[0m"); break;
     }
-    if (line <= -1) { 
-        printf("\033[1;31m%s\n\033[0m", message); 
-        exit(1); 
+    printf("\033[1;31m");
+    va_list args;
+    va_start(args, format);
+    while (*format != '\0') {
+        if (*format == '%') {
+            format++;
+            if (*format == 'f') {
+                double num = va_arg(args, double);
+                printf("%f", num);
+            } else if (*format == 'l') {
+                long num = va_arg(args, long);
+                printf("%li", num);
+            } else if (*format == 's') {
+                char *str = va_arg(args, char *);
+                printf("%s", str);
+            } else {
+                printf("Unsupported format specifier: %c\n", *format);
+            }
+        } else {
+            putchar(*format);
+        }
+        format++;
     }
-    printf("\033[1;31m%s :: LINE: %li\n\033[0m", message, line);
+    va_end(args);
+    printf("\n\033[0m");
     long lineCount = 1;
     long lowBound = line - 3;
     long highBound = line + 3;
@@ -54,4 +70,5 @@ void ERROR(enum ErrorType err, char* message, long line) {
         }
     }
     puts("");
+    exit(EXIT_FAILURE);
 }
