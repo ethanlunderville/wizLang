@@ -59,6 +59,7 @@ void printOpCodes();
 struct wizObject* pop();
 void* pushInternal(struct wizObject* arg);
 
+void* targetOffset();
 void* createStackFrame();
 void* fReturnNoArg();
 void* fReturn();

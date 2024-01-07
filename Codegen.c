@@ -142,6 +142,7 @@ void printOpCodes() {
         else if (program[i].associatedOperation == &fReturn) printf("RETURN");
         else if (program[i].associatedOperation == &fReturnNoArg) printf("RETURN <NULL>");
         else if (program[i].associatedOperation == &call) printf("CALL");
+        else if (program[i].associatedOperation == &targetOffset) printf("PUSHOFFSET");
         else continue;
         struct wizObject* arg;
         for (int j = 0 ; j < program[i].currentIndex ; j++) {
@@ -225,7 +226,7 @@ void codeGenWalker(struct AST * aTree) {
         case BINOP:
             {
             int i = 0;
-            if (aTree->token->token == ASSIGNMENT) {
+            if (aTree->token->token == ASSIGNMENT && aTree->children[0]->token->token != INDEXIDENT) {
                 union TypeStore value;
                 value.strValue = aTree->children[0]->token->lexeme;
                 addArg(programAdder(aTree,push), initWizArg(value, IDENTIFIER));
@@ -334,6 +335,20 @@ void codeGenWalker(struct AST * aTree) {
             union TypeStore value;
             value.strValue = aTree->token->lexeme;
             addArg(programAdder(aTree,call), initWizArg(value, STRINGTYPE));
+            break;
+            }
+        case INDEXIDENT:
+            {
+            union TypeStore value;
+            value.strValue = aTree->token->lexeme;
+            addArg(programAdder(aTree,pushLookup), initWizArg(value, STRINGTYPE));
+            codeGenWalker(aTree->children[0]);
+            break;
+            }
+        case OPENBRACKET:
+            {
+            codeGenWalker(aTree->children[0]);
+            programAdder(aTree, targetOffset);
             break;
             }
         case RETURN:

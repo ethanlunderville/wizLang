@@ -11,7 +11,6 @@ void setErrorFile(char* buffer) {
 }
 
 void FATAL_ERROR(enum ErrorType err, long line, const char* format, ...) {
-    puts("");
     switch (err) {
         case PARSE: printf("\033[1;31mPARSE ERROR :: \033[0m"); break;
         case CODEGEN: printf("\033[1;31mCODEGEN ERROR :: \033[0m"); break;
@@ -42,7 +41,7 @@ void FATAL_ERROR(enum ErrorType err, long line, const char* format, ...) {
         format++;
     }
     va_end(args);
-    printf("\n\033[0m");
+    printf("\033[0m");
     long lineCount = 1;
     long lowBound = line - 3;
     long highBound = line + 3;

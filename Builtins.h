@@ -3,6 +3,6 @@
 
 typedef void* (*BuiltInFunctionPtr)();
 BuiltInFunctionPtr getBuiltin();
-void* fPrint();
+void* fEcho();
 
 #endif

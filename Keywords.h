@@ -52,6 +52,7 @@ enum Tokens {
     STRING,
     IDENTIFIER,
     FUNCTIONCALLIDENT,
+    INDEXIDENT,
     /*END OPERANDS*/
     ENDOPERANDS,
     COMMA,
@@ -66,6 +67,9 @@ enum Tokens {
 
     DEF,
     RETURN,
+
+    OPENBRACKET,
+    CLOSEBRACKET,
 
     ENDOFFILE
 };
@@ -83,6 +87,8 @@ enum Types {
     STRINGTYPE,
     BINOP,
     OP,
+    //Chars are handled uniquely to prevent the need to make a wizobject for every char
+    CHARADDRESS, 
     NONE
 };
 

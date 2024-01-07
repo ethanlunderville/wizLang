@@ -112,6 +112,12 @@ int dumpStack() {
                 " %f\n", 
                 stack[i]->value.numValue
             ); break;
+        case CHARADDRESS:
+            printf(
+                " %c",
+                *(stack[i]->value.strValue)
+            );
+        break;
         }
         puts(" ------------------------");
     }    
@@ -174,11 +180,22 @@ void* pushLookup() {
 
 #define OP_EXECUTION_MACRO(op) \
     { \
+    double rightHand; \
+    double leftHand; \
     struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject)); \
     wizInplace->type = NUMBER; \
     union TypeStore temp; \
-    rightHand = pop()->value.numValue; \
-    temp.numValue = pop()->value.numValue op rightHand; \
+    struct wizObject* rWiz = pop(); \
+    struct wizObject* lWiz = pop(); \
+    if (rWiz->type == CHARADDRESS) \
+        rightHand = (double)(*(rWiz->value.strValue)); \
+    else \
+        rightHand = rWiz->value.numValue; \
+    if (lWiz->type == CHARADDRESS) \
+        leftHand = (double)(*(lWiz->value.strValue)); \
+    else \
+        leftHand = lWiz->value.numValue; \
+    temp.numValue = leftHand op rightHand; \
     wizInplace->value = temp; \
     pushInternal(wizInplace); \
     break; \
@@ -186,7 +203,6 @@ void* pushLookup() {
 
 void* binOpCode() {
     enum Tokens operation = fetchArg(instructionIndex,0)->value.opValue;
-    double rightHand;
     switch (operation) {
         case ADD: 
             {   
@@ -198,6 +214,7 @@ void* binOpCode() {
             }
         case POWER:
             {
+            double rightHand;
             struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject));
             wizInplace->type = NUMBER;
             union TypeStore temp;
@@ -211,11 +228,19 @@ void* binOpCode() {
             {
             struct wizObject * temp = pop();
             struct wizObject * ident = pop();
+
+            if (ident->type == CHARADDRESS) {
+                ident->value.strValue[0] = *(temp->value.strValue);
+                goto BREAK;
+            }
+
             assert(ident->type == IDENTIFIER);
             struct wizObject ** ref = getObjectRefFromIdentifierLocal(ident->value.strValue);
             if (ref == NULL)
                  ref = declareSymbol(ident->value.strValue);
             *ref = temp;
+            BREAK:
+            break;
             }
         case PIPE: 
             {
@@ -235,6 +260,17 @@ void* binOpCode() {
         default: break;
     }
     return NULL;
+}
+
+void* targetOffset() {
+    struct wizObject * offsetWiz = pop();
+    struct wizObject * continuosDataWiz = pop();
+    if (continuosDataWiz->type == STRINGTYPE) {
+        struct wizObject* characterObj = (struct wizObject*)malloc(sizeof(struct wizObject));
+        characterObj->type = CHARADDRESS;
+        characterObj->value.strValue = &((continuosDataWiz->value.strValue[(int)offsetWiz->value.numValue]));
+        pushInternal(characterObj);
+    }
 }
 
 void * fAssign() {
@@ -312,7 +348,11 @@ void interpret() {
     while (instructionIndex < programSize) {
         program[instructionIndex].associatedOperation();
         instructionIndex++;
-        //dumpStack();
-        //printContext();
+#ifdef DUMP_STACK
+        dumpStack();
+#endif
+#ifdef DUMP_CONTEXT
+        printContext();
+#endif
     }
 }

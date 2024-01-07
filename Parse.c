@@ -148,17 +148,32 @@ void lex(char* buffer, struct TokenStruct * programList) {
         case '+': addToProgramList("+", BINOP, lineNo ,ADD); break;
         case '-': addToProgramList("-", BINOP, lineNo ,SUBTRACT); break;
         case '*': addToProgramList("*", BINOP, lineNo ,MULTIPLY); break;
-        case '/': addToProgramList("/", BINOP, lineNo ,DIVIDE); break;
         case '^': addToProgramList("^", BINOP, lineNo ,POWER); break;
         case '(': addToProgramList("(", OP, lineNo ,LEFTPARENTH); break;
         case ')': addToProgramList(")", OP, lineNo ,RIGHTPARENTH); break;
         case '{': addToProgramList("{", NONE, lineNo ,OPENBRACE); break;
         case '}': addToProgramList("}", NONE, lineNo ,CLOSEBRACE); break;
+        case '[': addToProgramList("[", NONE, lineNo ,OPENBRACKET); break;
+        case ']': addToProgramList("]", NONE, lineNo ,CLOSEBRACKET); break;
         case '\n': {
             addToProgramList("\n", NONE, lineNo ,ENDLINE); 
             lineNo++; 
             break;
-        } 
+        }
+        case '/': {
+            if (checkNext(buffer,i,'/')) {
+                while (buffer[i]!='\n' && i < buffSize) 
+                    i++;
+                i++;
+            } else if (checkNext(buffer,i,'*')) {
+                while (!(buffer[i]=='*' && checkNext(buffer,i,'/')) && i < buffSize)
+                    i++;
+                i += 2;
+            } else {
+                addToProgramList("/", BINOP, lineNo ,DIVIDE);
+            }
+            break;
+        }
         case '<': {
             if (checkNext(buffer,i,'=')) {
                 i++;
@@ -292,6 +307,16 @@ void freeProgramList(struct TokenStruct * programList, long size) {
 
 // Parses every type of identifier
 
+struct AST* sSubScriptTree() {
+    struct AST* sTree = initAST(getCurrentTokenStruct());
+    expect(OPENBRACKET);
+    addChild(sTree, sExpression());
+    expect(CLOSEBRACKET);
+    if (isCurrentToken(OPENBRACKET))
+        addChild(sTree, sSubScriptTree());
+    return sTree;
+}
+
 struct AST* sIdentTree() {
     struct AST* identTree = initAST(getCurrentTokenStruct());
     scan();
@@ -306,6 +331,12 @@ struct AST* sIdentTree() {
                     expect(COMMA);
             }
             scan();
+            break;
+            }
+        case OPENBRACKET:
+            {
+            identTree->token->token = INDEXIDENT;
+            addChild(identTree, sSubScriptTree());
             break;
             }
         default: {
@@ -522,6 +553,7 @@ bool onExpressionBreaker() {
        ||isCurrentToken(ENDOFFILE)
        ||isCurrentToken(RIGHTPARENTH)
        ||isCurrentToken(COMMA)
+       ||isCurrentToken(CLOSEBRACKET)
     ) return true;
     return false;
 }

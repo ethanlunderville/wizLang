@@ -37,7 +37,40 @@ void processPlusOperator(
 ) {
     char doubleBuff[100];
     memset(doubleBuff,'\0',100);
-    if (val1->type == STRINGTYPE && val2->type == STRINGTYPE) {
+
+    /*COMBINATORIC EXPLOSION GOOD LUCK ADDING MORE TYPES*/
+    if (val1->type == CHARADDRESS && val2->type == CHARADDRESS) {
+        opArgRef->type = STRINGTYPE;
+        opArgRef->value.strValue = (char*)malloc(3);
+        opArgRef->value.strValue[0] = *(val1->value.strValue);
+        opArgRef->value.strValue[1] = *(val2->value.strValue);
+        opArgRef->value.strValue[2] = '\0';
+        pushInternal(opArgRef);
+    } else if (val1->type == CHARADDRESS && val2->type == NUMBER) {
+        opArgRef->type = NUMBER;
+        opArgRef->value.numValue = ((double)*(val1->value.strValue)) + val2->value.numValue;
+        pushInternal(opArgRef);
+    } else if (val1->type == NUMBER && val2->type == CHARADDRESS) {
+        opArgRef->type = NUMBER;
+        opArgRef->value.numValue = (val1->value.numValue) + ((double)*(val2->value.strValue));
+        pushInternal(opArgRef);
+    } else if (val1->type == CHARADDRESS && val2->type == STRINGTYPE) {
+        opArgRef->type = STRINGTYPE;
+        int len = strlen(val2->value.strValue) + 2;
+        opArgRef->value.strValue = (char*) malloc(len);
+        opArgRef->value.strValue[0] = *(val1->value.strValue);
+        memcpy(&opArgRef->value.strValue[1],val2->value.strValue,len - 2);
+        opArgRef->value.strValue[len-1] = '\0';
+        pushInternal(opArgRef);
+    } else if (val1->type == STRINGTYPE && val2->type == CHARADDRESS) {
+        opArgRef->type = STRINGTYPE;
+        int len = strlen(val1->value.strValue) + 2;
+        opArgRef->value.strValue = (char*) malloc(len);
+        memcpy(opArgRef->value.strValue,val1->value.strValue,len - 2);
+        opArgRef->value.strValue[len-2] = *(val2->value.strValue);
+        opArgRef->value.strValue[len-1] = '\0';
+        pushInternal(opArgRef);
+    } else if (val1->type == STRINGTYPE && val2->type == STRINGTYPE) {
         int oldVal1StrLength = strlen(val1->value.strValue);
         int oldVal2StrLength = strlen(val2->value.strValue);
         int newStrSize = oldVal1StrLength + oldVal2StrLength;

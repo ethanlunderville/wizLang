@@ -35,6 +35,7 @@ bool onConditionalToken();
 bool onOperandToken();
 void expect(enum Tokens token);
 
+struct AST* sSubScriptTree();
 struct AST* sReturn();
 struct AST* sBlock();
 struct AST* sAtomicExpr();

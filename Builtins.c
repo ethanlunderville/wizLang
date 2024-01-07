@@ -6,12 +6,12 @@
 extern struct wizObject* stack;
 
 BuiltInFunctionPtr getBuiltin(char * funcName) {
-    if (strcmp("println", funcName)==0) 
-        return &fPrint;
+    if (strcmp("echo", funcName)==0) 
+        return &fEcho;
     return 0;
 }
 
-void* fPrint() {
+void* fEcho() {
     struct wizObject* val = pop();
     switch (val->type) 
     {
@@ -23,6 +23,11 @@ void* fPrint() {
     case STRINGTYPE: 
         {
         printf("%s",val->value.strValue);
+        break;
+        }
+    case CHARADDRESS: 
+        {
+        printf("%c",*(val->value.strValue));
         break;
         }
     }
