@@ -160,6 +160,14 @@ void lex(char* buffer, struct TokenStruct * programList) {
             lineNo++; 
             break;
         }
+        case '\'': {
+            i++;
+            addToProgramList(&buffer[i], CHARADDRESS, lineNo , CHARACTER_LITERAL);
+            i++;
+            if (buffer[i] != '\'')
+                FATAL_ERROR(PARSE, lineNo, "Expected single quote after character"); 
+            break;
+        }
         case '/': {
             if (checkNext(buffer,i,'/')) {
                 while (buffer[i]!='\n' && i < buffSize) 
@@ -244,6 +252,25 @@ void lex(char* buffer, struct TokenStruct * programList) {
                 char * alphaLex = createAlphaLexeme(&i, buffer);
                 if (getKeywordFromString(alphaLex) == -1) {
                     addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
+                    if (checkNext(buffer,i,'+')) {
+                        i++;
+                        if (checkNext(buffer,i,'+')) {
+                            addToProgramList("=", BINOP, lineNo, ASSIGNMENT);
+                            addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
+                            addToProgramList("+", BINOP, lineNo ,ADD);
+                            addToProgramList("1", NUMBER, lineNo ,NUM);
+                        }
+                        i++;
+                    } else if (checkNext(buffer,i,'-')) {
+                        i++;
+                        if (checkNext(buffer,i,'-')) {
+                            addToProgramList("=", BINOP, lineNo, ASSIGNMENT);
+                            addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
+                            addToProgramList("-", BINOP, lineNo ,SUBTRACT);
+                            addToProgramList("1", NUMBER, lineNo ,NUM);
+                        }
+                        i++;
+                    }
                     continue;
                 }
                 addToProgramList(alphaLex, NONE, lineNo ,getKeywordFromString(alphaLex)); 
@@ -532,7 +559,10 @@ bool onOperandToken() {
 bool onData() {
     if (programListSize <= currentProgramListCounter)
         return false;
-    if (isCurrentToken(NUM) || isCurrentToken(STRING))
+    if (isCurrentToken(NUM) 
+     || isCurrentToken(STRING) 
+     || isCurrentToken(CHARACTER_LITERAL)
+     )
         return true;
     return false;
 }

@@ -50,6 +50,7 @@ enum Tokens {
     RIGHTPARENTH,
     NUM, 
     STRING,
+    CHARACTER_LITERAL,
     IDENTIFIER,
     FUNCTIONCALLIDENT,
     INDEXIDENT,
@@ -89,6 +90,7 @@ enum Types {
     OP,
     //Chars are handled uniquely to prevent the need to make a wizobject for every char
     CHARADDRESS, 
+    CHAR,
     NONE
 };
 

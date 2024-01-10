@@ -9,16 +9,23 @@
 
 extern struct Context* context;
 
-struct Context* initContext() {
+struct Context* initContext(enum ContextType type) {
     struct Context* newContext = (struct Context*) malloc(sizeof(struct Context));
+    newContext->type = type;
     memset(newContext->map,0,BASE_SCOPE_SIZE * sizeof(struct IdentifierMap));
     newContext->cPtr = NULL;
     newContext->currentIndex = 0;
     return newContext;
 }
 
-void* pushScope() {
-    struct Context* newContext = initContext();
+void* pushConditionalScope() {
+    struct Context* newContext = initContext(CONDITIONAL);
+    newContext->cPtr = context;
+    context = newContext; 
+}
+
+void* pushFunctionScope() {
+    struct Context* newContext = initContext(FUNCTION);
     newContext->cPtr = context;
     context = newContext; 
 }

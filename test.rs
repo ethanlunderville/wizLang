@@ -1,2 +1,10 @@
-x = "test"
-echo(x[1]+ 1)
+def test(n) {
+    if (n == 0) {
+        return 0
+    } else if (n == 1) {
+        return 1
+    } else {
+        return test(n - 1) + test(n - 2)
+    } 
+}
+println(test(10))
