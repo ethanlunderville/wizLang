@@ -7,4 +7,5 @@ def test(n) {
         return test(n - 1) + test(n - 2)
     } 
 }
-println(test(10))
+
+echo(test(10))

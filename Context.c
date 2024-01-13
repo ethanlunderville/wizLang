@@ -8,24 +8,22 @@
 #include "Error.h"
 
 extern struct Context* context;
+struct Context* globalContext;
 
-struct Context* initContext(enum ContextType type) {
+struct Context* initContext() {
     struct Context* newContext = (struct Context*) malloc(sizeof(struct Context));
-    newContext->type = type;
     memset(newContext->map,0,BASE_SCOPE_SIZE * sizeof(struct IdentifierMap));
     newContext->cPtr = NULL;
     newContext->currentIndex = 0;
+    if (context == NULL) {
+        globalContext = newContext;
+        context = newContext;
+    }
     return newContext;
 }
 
-void* pushConditionalScope() {
-    struct Context* newContext = initContext(CONDITIONAL);
-    newContext->cPtr = context;
-    context = newContext; 
-}
-
-void* pushFunctionScope() {
-    struct Context* newContext = initContext(FUNCTION);
+void* pushScope() {
+    struct Context* newContext = initContext();
     newContext->cPtr = context;
     context = newContext; 
 }
@@ -37,21 +35,14 @@ void* popScope() {
 }
 
 struct wizObject ** getObjectRefFromIdentifier(char * ident) {
-    struct Context* ref = context;
-    while (ref != NULL) {
-        for (int i = 0 ; i < ref->currentIndex ; i++) {
-            if (strcmp(ref->map[i].identifier, ident)==0)
-                return &ref->map[i].value;
-        }
-        ref = ref->cPtr;
-    } 
-    return NULL;
-}
-
-struct wizObject ** getObjectRefFromIdentifierLocal(char * ident) {
-    for (int i = 0 ; i < context->currentIndex ; i++) 
+    for (int i = 0 ; i < context->currentIndex ; i++) {
         if (strcmp(context->map[i].identifier, ident)==0)
             return &context->map[i].value;
+    }
+    for (int i = 0 ; i < globalContext->currentIndex ; i++) {
+        if (strcmp(globalContext->map[i].identifier, ident)==0)
+            return &globalContext->map[i].value;
+    }
     return NULL;
 }
 
@@ -82,6 +73,11 @@ void printContext() {
             case NUMBER: 
                 {
                 printf("%f\n",ref->map[i].value->value.numValue); 
+                break;
+                }
+            case CHARADDRESS: 
+                {
+                printf("%c\n",*(ref->map[i].value->value.strValue)); 
                 break;
                 }
             }

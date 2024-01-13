@@ -134,8 +134,7 @@ void printOpCodes() {
         else if (program[i].associatedOperation == &binOpCode) printf("BINOP");
         else if (program[i].associatedOperation == &jump) printf("JUMP");
         else if (program[i].associatedOperation == &jumpNe) printf("JUMPNE");
-        else if (program[i].associatedOperation == &pushFunctionScope) printf("PUSHFSCOPE");
-        else if (program[i].associatedOperation == &pushConditionalScope) printf("PUSHCSCOPE");
+        else if (program[i].associatedOperation == &pushScope) printf("PUSHSCOPE");
         else if (program[i].associatedOperation == &popScope) printf("POPSCOPE");
         else if (program[i].associatedOperation == &pushLookup) printf("PUSHLOOKUP");
         else if (program[i].associatedOperation == &fAssign) printf("ASSIGNF");
@@ -184,7 +183,7 @@ void printOpCodes() {
 // Function that the Compiler.c file calls to kick off codeGen stage.
 
 struct opCode * codeGen(struct AST * aTree) {
-    context = initContext(GLOBAL);
+    initContext();
     codeGenWalker(aTree);
     return program;
 }
@@ -312,7 +311,7 @@ void codeGenWalker(struct AST * aTree) {
             value.numValue = 0;
             long op = programAdder(aTree,jump);
             addArg(op, initWizArg(value,NUMBER));
-            programAdder(aTree,pushFunctionScope);
+            programAdder(aTree,pushScope);
             // Iterate backwars through the parameters and ensure that they are assigned in the correct order
             for (int i = aTree->children[0]->childCount - 2 ; i > -1; i--) {
                 value.strValue = aTree->children[0]->children[i]->token->lexeme;

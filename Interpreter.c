@@ -21,6 +21,7 @@
 #include "Keywords.h"
 #include "Context.h"
 #include "Builtins.h"
+#include "Switchboard.h"
 
 // These two are defined in Codegen.c
 extern long programSize; 
@@ -231,15 +232,14 @@ void* binOpCode() {
 
             if (ident->type == CHARADDRESS) {
                 ident->value.strValue[0] = *(temp->value.strValue);
-                goto BREAK;
+                break;
             }
 
             assert(ident->type == IDENTIFIER);
-            struct wizObject ** ref = getObjectRefFromIdentifierLocal(ident->value.strValue);
+            struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
             if (ref == NULL)
                  ref = declareSymbol(ident->value.strValue);
             *ref = temp;
-            BREAK:
             break;
             }
         case PIPE: 
@@ -277,7 +277,7 @@ void * fAssign() {
     struct wizObject * ident = pop();
     struct wizObject * temp = pop();
     assert(ident->type == STRINGTYPE);
-    struct wizObject ** ref = getObjectRefFromIdentifierLocal(ident->value.strValue);
+    struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
     if (ref == NULL)
          ref = declareSymbol(ident->value.strValue);
     *ref = temp;
@@ -343,14 +343,16 @@ void * fReturnNoArg() {
     Driver code for the VM.
 
 */
-
+void breaker(){};
 void interpret() {
+    
     while (instructionIndex < programSize) {
         program[instructionIndex].associatedOperation();
         instructionIndex++;
 #ifdef DUMP_STACK
         dumpStack();
 #endif
+breaker();
 #ifdef DUMP_CONTEXT
         printContext();
 #endif
