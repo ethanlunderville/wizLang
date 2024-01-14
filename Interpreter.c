@@ -22,6 +22,7 @@
 #include "Context.h"
 #include "Builtins.h"
 #include "Switchboard.h"
+#include "Error.h"
 
 // These two are defined in Codegen.c
 extern long programSize; 
@@ -170,12 +171,39 @@ void* pushLookup() {
         exit(EXIT_FAILURE);
     }
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
-    stack[stackSize] = *getObjectRefFromIdentifier(
+    struct wizObject ** potentialLookup = getObjectRefFromIdentifier(
         fetchArg(instructionIndex,0)->value.strValue
     );
+    if (potentialLookup == NULL)
+        FATAL_ERROR(
+            RUNTIME, 
+            fetchCurrentLine(), 
+            "Unrecognized symbol %s", 
+            fetchArg(instructionIndex,0)->value.strValue
+        ); 
+    stack[stackSize] = *potentialLookup;
     stackSize++;
     return NULL;
 }
+
+#define EQ_OP_EXECUTION_MACRO(op) \
+    { \
+    struct wizObject* rWiz = pop(); \
+    struct wizObject* lWiz = pop(); \
+    union TypeStore typeVal; \
+    struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject)); \
+    wizInplace->type = NUMBER; \
+    if (lWiz->type == STRINGTYPE && rWiz->type == STRINGTYPE) { \
+        typeVal.numValue = (double)(strcmp(rWiz->value.strValue, lWiz->value.strValue) op 0); \
+    } else if (lWiz->type == CHARADDRESS && rWiz->type == CHARADDRESS) { \
+        typeVal.numValue = (double)(lWiz->value.strValue[0] op rWiz->value.strValue[0]); \
+    } else { \
+        typeVal.numValue = (double)(lWiz->value.numValue op rWiz->value.numValue); \
+    } \
+    wizInplace->value = typeVal; \
+    pushInternal(wizInplace); \
+    break; \
+    } \
 
 // Handles binary operations.
 
@@ -246,6 +274,8 @@ void* binOpCode() {
             {
             break;
             };
+        case NOTEQUAL: EQ_OP_EXECUTION_MACRO(!=);
+        case EQUAL: EQ_OP_EXECUTION_MACRO(==);
         case SUBTRACT: OP_EXECUTION_MACRO(-);
         case MULTIPLY: OP_EXECUTION_MACRO(*);
         case DIVIDE: OP_EXECUTION_MACRO(/);
@@ -255,8 +285,6 @@ void* binOpCode() {
         case GREATEREQUAL: OP_EXECUTION_MACRO(>=);
         case GREATERTHAN: OP_EXECUTION_MACRO(>);
         case LESSTHAN: OP_EXECUTION_MACRO(<);
-        case NOTEQUAL: OP_EXECUTION_MACRO(!=);
-        case EQUAL: OP_EXECUTION_MACRO(==);
         default: break;
     }
     return NULL;
@@ -306,7 +334,10 @@ void * call() {
         return NULL;
     }
     pushCounterStack(&returnLines, instructionIndex);
-    instructionIndex = ((long) (*getObjectRefFromIdentifier(functionName))->value.numValue) - 2;
+    struct wizObject ** potentialLineNo = getObjectRefFromIdentifier(functionName);
+    if (potentialLineNo == NULL)
+        FATAL_ERROR(RUNTIME,fetchCurrentLine(), "Unrecognized function name: %s", functionName);
+    instructionIndex = ((long) (*potentialLineNo)->value.numValue) - 2;
 }
 
 void * fReturn() {
@@ -343,7 +374,7 @@ void * fReturnNoArg() {
     Driver code for the VM.
 
 */
-void breaker(){};
+
 void interpret() {
     
     while (instructionIndex < programSize) {
@@ -352,7 +383,6 @@ void interpret() {
 #ifdef DUMP_STACK
         dumpStack();
 #endif
-breaker();
 #ifdef DUMP_CONTEXT
         printContext();
 #endif

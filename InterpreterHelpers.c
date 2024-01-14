@@ -1,3 +1,14 @@
+/*
+
+    Filename: InterpreterHelpers.c
+
+    Description:
+
+    Various functions to assist interpreter in order
+    not to overcomplicate the Interpreter.c file.
+
+*/
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

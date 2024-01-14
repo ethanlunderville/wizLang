@@ -146,7 +146,6 @@ void lex(char* buffer, struct TokenStruct * programList) {
         {
         case ',': addToProgramList(",", NONE, lineNo ,COMMA); break;
         case '+': addToProgramList("+", BINOP, lineNo ,ADD); break;
-        case '-': addToProgramList("-", BINOP, lineNo ,SUBTRACT); break;
         case '*': addToProgramList("*", BINOP, lineNo ,MULTIPLY); break;
         case '^': addToProgramList("^", BINOP, lineNo ,POWER); break;
         case '(': addToProgramList("(", OP, lineNo ,LEFTPARENTH); break;
@@ -155,6 +154,10 @@ void lex(char* buffer, struct TokenStruct * programList) {
         case '}': addToProgramList("}", NONE, lineNo ,CLOSEBRACE); break;
         case '[': addToProgramList("[", NONE, lineNo ,OPENBRACKET); break;
         case ']': addToProgramList("]", NONE, lineNo ,CLOSEBRACKET); break;
+        case '-': {
+            addToProgramList("-", BINOP, lineNo ,SUBTRACT); 
+            break;
+        }
         case '\n': {
             addToProgramList("\n", NONE, lineNo ,ENDLINE); 
             lineNo++; 
@@ -162,6 +165,8 @@ void lex(char* buffer, struct TokenStruct * programList) {
         }
         case '\'': {
             i++;
+            //if (buffer[i] == '\'')
+            //    FATAL_ERROR(PARSE, lineNo, "Illegal empty character");
             addToProgramList(&buffer[i], CHARADDRESS, lineNo , CHARACTER_LITERAL);
             i++;
             if (buffer[i] != '\'')
@@ -172,11 +177,16 @@ void lex(char* buffer, struct TokenStruct * programList) {
             if (checkNext(buffer,i,'/')) {
                 while (buffer[i]!='\n' && i < buffSize) 
                     i++;
+                lineNo++;
                 i++;
             } else if (checkNext(buffer,i,'*')) {
-                while (!(buffer[i]=='*' && checkNext(buffer,i,'/')) && i < buffSize)
+                while (!(buffer[i]=='*' && checkNext(buffer,i,'/')) && i < buffSize){
+                    if (buffer[i] == '\n')
+                        lineNo++;
                     i++;
-                i += 2;
+                }
+                i++
+                ;
             } else {
                 addToProgramList("/", BINOP, lineNo ,DIVIDE);
             }
@@ -202,6 +212,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
         }
         case '!': {
             if (checkNext(buffer,i,'=')) {
+                i++;
                 addToProgramList("!=",BINOP,lineNo,NOTEQUAL);
             }
             else { 

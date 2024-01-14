@@ -1,3 +1,13 @@
+/*
+
+    Filename: Error.c
+
+    Description:
+
+    Wizard error handling
+
+*/
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -5,6 +15,14 @@
 #include "Error.h"
 
 static char* fileBuffer;
+
+/*
+
+    Stores a buffer containing the source program so
+    that if FATAL_ERROR is called it can show the line
+    number with an error highlighted in red.
+
+*/
 
 void setErrorFile(char* buffer) {
     fileBuffer = buffer;

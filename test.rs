@@ -1,4 +1,4 @@
-def test(n) {
+/*def test(n) {
     if (n == 0) {
         return 0
     } else if (n == 1) {
@@ -7,5 +7,6 @@ def test(n) {
         return test(n - 1) + test(n - 2)
     } 
 }
-
-echo(test(10))
+echo(test(10))*/
+z=2
+echo((0-12));
