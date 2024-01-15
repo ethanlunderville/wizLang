@@ -154,10 +154,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
         case '}': addToProgramList("}", NONE, lineNo ,CLOSEBRACE); break;
         case '[': addToProgramList("[", NONE, lineNo ,OPENBRACKET); break;
         case ']': addToProgramList("]", NONE, lineNo ,CLOSEBRACKET); break;
-        case '-': {
-            addToProgramList("-", BINOP, lineNo ,SUBTRACT); 
-            break;
-        }
+        case '-': addToProgramList("-", BINOP, lineNo ,SUBTRACT); break;
         case '\n': {
             addToProgramList("\n", NONE, lineNo ,ENDLINE); 
             lineNo++; 
@@ -165,8 +162,8 @@ void lex(char* buffer, struct TokenStruct * programList) {
         }
         case '\'': {
             i++;
-            //if (buffer[i] == '\'')
-            //    FATAL_ERROR(PARSE, lineNo, "Illegal empty character");
+            if (buffer[i] == '\'')
+                FATAL_ERROR(PARSE, lineNo, "Illegal empty character");
             addToProgramList(&buffer[i], CHARADDRESS, lineNo , CHARACTER_LITERAL);
             i++;
             if (buffer[i] != '\'')
@@ -262,6 +259,8 @@ void lex(char* buffer, struct TokenStruct * programList) {
             } else if (!isalpha(buffer[i])) 
                 FATAL_ERROR(PARSE, lineNo, "Unrecognized symbol: %s", buffer[i]);
             char * alphaLex = createAlphaLexeme(&i, buffer);
+            if (strcmp(alphaLex, "error") == 0) 
+                FATAL_ERROR(PARSE, lineNo, "Debug err");
             if (getKeywordFromString(alphaLex) != -1) {
                 addToProgramList(alphaLex, NONE, lineNo ,getKeywordFromString(alphaLex));   
                 continue;
@@ -601,7 +600,9 @@ bool onExpressionBreaker() {
 
 void expect(enum Tokens token) {
     if (programList[currentProgramListCounter].token != token) {
-        printf(
+        FATAL_ERROR(
+            PARSE,
+            getCurrentTokenStruct()->line,
             "ERROR IN PARSER:: EXPECTED: %s, GOT: %s\n", 
             getTokenName(token), 
             getTokenName(programList[currentProgramListCounter].token) 

@@ -97,7 +97,7 @@ void printContext() {
             switch (ref->map[i].value->type) 
             {
             case STRINGTYPE: printf("%s\n",ref->map[i].value->value.strValue); break;
-            case NUMBER: printf("%f\n",ref->map[i].value->value.numValue); 
+            case NUMBER: printf("%f\n",ref->map[i].value->value.numValue); break;
             case CHARADDRESS: printf("%c\n",*(ref->map[i].value->value.strValue)); break;
             }
             for (int j = 0 ; j < count ; j++) 

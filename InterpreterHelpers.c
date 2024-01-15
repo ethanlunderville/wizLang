@@ -27,9 +27,8 @@ int removeZerosFromDoubleString(char * str) {
 
 int floatStrContainsDecimal(char * str) {
     for (int i = 0 ; i < strlen(str) ; i++) {
-        if (str[i] == '.') {
+        if (str[i] == '.')
             return 1;
-        }
     } 
     return 0;
 }
@@ -48,7 +47,6 @@ void processPlusOperator(
 ) {
     char doubleBuff[100];
     memset(doubleBuff,'\0',100);
-
     /*COMBINATORIC EXPLOSION GOOD LUCK ADDING MORE TYPES*/
     if (val1->type == CHARADDRESS && val2->type == CHARADDRESS) {
         opArgRef->type = STRINGTYPE;

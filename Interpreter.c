@@ -266,12 +266,10 @@ void* binOpCode() {
             {
             struct wizObject * temp = pop();
             struct wizObject * ident = pop();
-
             if (ident->type == CHARADDRESS) {
                 ident->value.strValue[0] = *(temp->value.strValue);
                 break;
             }
-
             assert(ident->type == IDENTIFIER);
             struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
             if (ref == NULL)
