@@ -18,6 +18,7 @@
 #include "Context.h"
 #include "AST.h"
 #include "Mem.h"
+#include "Error.h"
 
 /*
 
@@ -116,10 +117,8 @@ long initWizArg(union TypeStore val, enum Types type) {
 // See the opCode struct in Interpreter.h for more clarity.
 
 void addArg(long opCodeIndex, long wizIndex) {
-    if (program[opCodeIndex].currentIndex == OPCODE_ARGLIMIT) {
-        puts("ArgCount error: Too many args");
-        exit(1);
-    }
+    if (program[opCodeIndex].currentIndex == OPCODE_ARGLIMIT) 
+        FATAL_ERROR(LANGUAGE, -1, "Attempted to add too many args to opCode");
     program[opCodeIndex].argIndexes[program[opCodeIndex].currentIndex] = wizIndex;
     program[opCodeIndex].currentIndex++;
 }

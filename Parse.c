@@ -185,8 +185,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
                         lineNo++;
                     i++;
                 }
-                i++
-                ;
+                i++;
             } else {
                 addToProgramList("/", BINOP, lineNo ,DIVIDE);
             }
@@ -259,33 +258,32 @@ void lex(char* buffer, struct TokenStruct * programList) {
         default:
             if (isdigit(buffer[i])) {
                 addToProgramList(createNumberLexeme(&i, buffer), NUMBER, lineNo ,NUM);
-            } else if (isalpha(buffer[i])) {
-                char * alphaLex = createAlphaLexeme(&i, buffer);
-                if (getKeywordFromString(alphaLex) == -1) {
-                    addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
-                    if (checkNext(buffer,i,'+')) {
-                        i++;
-                        if (checkNext(buffer,i,'+')) {
-                            addToProgramList("=", BINOP, lineNo, ASSIGNMENT);
-                            addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
-                            addToProgramList("+", BINOP, lineNo ,ADD);
-                            addToProgramList("1", NUMBER, lineNo ,NUM);
-                        }
-                        i++;
-                    } else if (checkNext(buffer,i,'-')) {
-                        i++;
-                        if (checkNext(buffer,i,'-')) {
-                            addToProgramList("=", BINOP, lineNo, ASSIGNMENT);
-                            addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
-                            addToProgramList("-", BINOP, lineNo ,SUBTRACT);
-                            addToProgramList("1", NUMBER, lineNo ,NUM);
-                        }
-                        i++;
-                    }
-                    continue;
-                }
-                addToProgramList(alphaLex, NONE, lineNo ,getKeywordFromString(alphaLex)); 
+                continue;
+            } else if (!isalpha(buffer[i])) 
+                FATAL_ERROR(PARSE, lineNo, "Unrecognized symbol: %s", buffer[i]);
+            char * alphaLex = createAlphaLexeme(&i, buffer);
+            if (getKeywordFromString(alphaLex) != -1) {
+                addToProgramList(alphaLex, NONE, lineNo ,getKeywordFromString(alphaLex));   
+                continue;
+            } 
+            addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
+            i++;
+            if (buffer[i] == '+' && checkNext(buffer,i,'+')) {
+                addToProgramList("=", BINOP, lineNo, ASSIGNMENT);
+                addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
+                addToProgramList("+", BINOP, lineNo ,ADD);
+                addToProgramList("1", NUMBER, lineNo ,NUM);
+                i++;
+            } else if (buffer[i] == '-' && checkNext(buffer,i,'-')) {
+                addToProgramList("=", BINOP, lineNo, ASSIGNMENT);
+                addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
+                addToProgramList("-", BINOP, lineNo ,SUBTRACT);
+                addToProgramList("1", NUMBER, lineNo ,NUM);
+                i++;
+            } else {
+                i--;
             }
+            continue;
         }
     }
     addToProgramList("END", NONE, lineNo ,ENDOFFILE);

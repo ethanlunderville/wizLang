@@ -67,18 +67,18 @@ struct wizObject * fetchArg (long opCodeIndex, int argNum) {
 int printCounterStack(struct lineCounterStack* counterStack) {
     puts("|---------Dump-----------|");
     int i = counterStack->stackSize - 1;
-    for (; i > -1; i--) {
-        printf("%li\n", counterStack->stack[i]);
-        puts(" ------------------------");
-    }
+    for (; i > -1; i--)
+        printf("%li\n------------------------\n", counterStack->stack[i]);
     return i;
 }   
 
 long popCounterStack(struct lineCounterStack* counterStack) {
-    if (counterStack->stackSize == 0) {
-        puts("Attempted to pop empty counter stack!");
-        exit(EXIT_FAILURE);
-    }
+    if (counterStack->stackSize == 0) 
+        FATAL_ERROR(
+            LANGUAGE, 
+            fetchCurrentLine(), 
+            "Attempted to pop either the ReturnAddress stack or the StackFrame stack"
+        );
     long element = counterStack->stack[counterStack->stackSize-1];
     counterStack->stack[counterStack->stackSize-1] = 0;   
     counterStack->stackSize--;
@@ -86,10 +86,12 @@ long popCounterStack(struct lineCounterStack* counterStack) {
 }
 
 void pushCounterStack(struct lineCounterStack* counterStack, long val) {
-    if (counterStack->stackSize == STACK_LIMIT) {
-        puts("Stack Overflow!");
-        exit(EXIT_FAILURE);
-    }
+    if (counterStack->stackSize == STACK_LIMIT)
+        FATAL_ERROR(
+            LANGUAGE, 
+            fetchCurrentLine(), 
+            "Stack Overflow"
+        );
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     counterStack->stack[counterStack->stackSize] = val;
     counterStack->stackSize++;
@@ -118,8 +120,7 @@ int dumpStack() {
             printf(
                 " %c",
                 *(stack[i]->value.strValue)
-            );
-        break;
+            ); break;
         }
         puts(" ------------------------");
     }    
@@ -129,10 +130,12 @@ int dumpStack() {
 // Pops a value off of the Runtime Stack.
 
 struct wizObject* pop() {
-    if (stackSize == 0) {
-        puts("Attempted to pop empty stack!");
-        exit(EXIT_FAILURE);
-    }
+    if (stackSize == 0) 
+        FATAL_ERROR(
+            LANGUAGE, 
+            fetchCurrentLine(), 
+            "Attempted to pop an empty Runtime Stack"
+        );
     struct wizObject* element = stack[stackSize-1];
     stack[stackSize-1] = NULL;   
     stackSize--;
@@ -140,10 +143,12 @@ struct wizObject* pop() {
 }
 
 void* pushInternal(struct wizObject* arg) {
-    if (stackSize == STACK_LIMIT) {
-        puts("Stack Overflow!");
-        exit(EXIT_FAILURE);
-    }
+    if (stackSize == STACK_LIMIT) 
+        FATAL_ERROR(
+            LANGUAGE, 
+            fetchCurrentLine(), 
+            "Stack Overflow"
+        );
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     stack[stackSize] = arg;
     stackSize++;
@@ -153,10 +158,12 @@ void* pushInternal(struct wizObject* arg) {
 // Pushes a value onto the Runtime Stack.
 
 void* push() {
-    if (stackSize == STACK_LIMIT) {
-        puts("Stack Overflow!");
-        exit(EXIT_FAILURE);
-    }
+    if (stackSize == STACK_LIMIT) 
+        FATAL_ERROR(
+            LANGUAGE, 
+            fetchCurrentLine(), 
+            "Stack Overflow"
+        );
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     stack[stackSize] = fetchArg(instructionIndex,0);
     stackSize++;
@@ -166,10 +173,12 @@ void* push() {
 // Pushes a value from the enviroment onto the Runtime Stack.
 
 void* pushLookup() {
-    if (stackSize == STACK_LIMIT) {
-        puts("Stack Overflow!");
-        exit(EXIT_FAILURE);
-    }
+    if (stackSize == STACK_LIMIT) 
+        FATAL_ERROR(
+            LANGUAGE, 
+            fetchCurrentLine(), 
+            "Stack Overflow"
+        );
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     struct wizObject ** potentialLookup = getObjectRefFromIdentifier(
         fetchArg(instructionIndex,0)->value.strValue
@@ -348,10 +357,12 @@ void * fReturn() {
     popCounterStack(&stackFrames);
     instructionIndex = popCounterStack(&returnLines);
     popScope();
-    if (stackSize == STACK_LIMIT) {
-        puts("Stack Overflow!");
-        exit(EXIT_FAILURE);
-    }
+    if (stackSize == STACK_LIMIT) 
+        FATAL_ERROR(
+            LANGUAGE, 
+            fetchCurrentLine(), 
+            "Stack Overflow"
+        );
     stack[stackSize] = retVal;
     stackSize++;
 }
@@ -376,7 +387,6 @@ void * fReturnNoArg() {
 */
 
 void interpret() {
-    
     while (instructionIndex < programSize) {
         program[instructionIndex].associatedOperation();
         instructionIndex++;
