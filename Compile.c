@@ -23,6 +23,7 @@
 
 extern long programListSize;
 extern struct TokenStruct * programList;
+extern struct opCode * program;
 
 /* Functions to read the file into a single buffer */
 
@@ -83,10 +84,11 @@ int main () {
     printOpCodes();
     puts("*** END PRINTING BYTECODES ***");
 #endif
-    /*PROGRAM EXECUTES*/
-    interpret();
     deallocateAST(aTree);
     freeProgramList(programList, programListSize);
+    /*PROGRAM EXECUTES*/
+    interpret();
+    free(program);
     free(buffer);
     return EXIT_SUCCESS;
 }

@@ -54,6 +54,8 @@ struct wizObject * wizSlab;
 // Global context to declare functions
 extern struct Context* context;
 
+// Faux null union
+union TypeStore nullVal;
 
 ////////////////////////////////////////////////////////////////
 // CODEGEN HELPERS
@@ -61,66 +63,28 @@ extern struct Context* context;
 
 // Constructor for the opCode that ensures it will be correctly laid out in memory
 
-long programAdder(struct AST* node, ByteCodeFunctionPtr op) {
+long programAdder(
+    struct AST* node, 
+    ByteCodeFunctionPtr op, 
+    union TypeStore val, 
+    enum Types type
+) {
     if (programSize == 0) {
         program = INIT_ARRAY(struct opCode);
         programCapacity = BASE_CAPACITY;
     }
     if (programSize == programCapacity - 1) {
         programCapacity = GROW_CAPACITY(programCapacity);
-        program = GROW_ARRAY(
-            struct opCode, 
-            program, 
-            programCapacity
-        );
+        program = GROW_ARRAY(struct opCode, program, programCapacity);
     }
     program[programSize].lineNumber = node->token->line;
     program[programSize].associatedOperation = op;
-    program[programSize].currentIndex = 0;
-    memset(program[programSize].argIndexes,0,OPCODE_ARGLIMIT);
+    program[programSize].wizArg.value = val;
+    program[programSize].wizArg.type = type;
+    // Static variables are ignored by the mem manager since they have a refCount of -1
+    program[programSize].wizArg.referenceCount = -1;
     programSize++;
     return programSize-1;
-}
-
-/*
-
-    Since the wizArgs are stored in a continuous array
-    in memory that may be resized, the pointers are
-    subject to change. Because of this the opCode
-    struct stores the indexes of the wizObjects rather
-    than the pointers that were assigned when the
-    object was created. That is also why the function 
-    returns a long instead of a pointer.
-
-*/
-
-long initWizArg(union TypeStore val, enum Types type) {
-    if (wizSlabSize == 0) {
-        wizSlab = INIT_ARRAY(struct wizObject);
-        wizSlabCapacity = BASE_CAPACITY;
-    }
-    if (wizSlabSize == wizSlabCapacity - 1) {
-        wizSlabCapacity = GROW_CAPACITY(wizSlabCapacity);
-        wizSlab = GROW_ARRAY(
-            struct wizObject, 
-            wizSlab, 
-            wizSlabCapacity
-        );
-    }
-    wizSlab[wizSlabSize].value = val;
-    wizSlab[wizSlabSize].type = type;
-    wizSlabSize++;
-    return wizSlabSize - 1;
-}
-
-// Adds an argument to the opCode. 
-// See the opCode struct in Interpreter.h for more clarity.
-
-void addArg(long opCodeIndex, long wizIndex) {
-    if (program[opCodeIndex].currentIndex == OPCODE_ARGLIMIT) 
-        FATAL_ERROR(LANGUAGE, -1, "Attempted to add too many args to opCode");
-    program[opCodeIndex].argIndexes[program[opCodeIndex].currentIndex] = wizIndex;
-    program[opCodeIndex].currentIndex++;
 }
 
 // Prints the opcode intermediate representation
@@ -143,13 +107,11 @@ void printOpCodes() {
         else if (program[i].associatedOperation == &call) printf("CALL");
         else if (program[i].associatedOperation == &targetOffset) printf("PUSHOFFSET");
         else continue;
-        struct wizObject* arg;
-        for (int j = 0 ; j < program[i].currentIndex ; j++) {
-            arg = fetchArg(i, j);
-            switch (arg->type) {
-                case BINOP:
-                {
-                switch (arg->value.opValue) 
+        struct wizObject* arg = fetchArg(i);
+        switch (arg->type) {
+            case BINOP:
+            {
+            switch (arg->value.opValue) 
                 {
                 case (ADD) : printf(" +"); break;
                 case (SUBTRACT) : printf(" -"); break;
@@ -167,12 +129,11 @@ void printOpCodes() {
                 case (EQUAL) : printf(" =="); break;
                 case (NOTEQUAL) : printf(" !="); break;
                 }
-                break;
-                }
-                case IDENTIFIER:
-                case STRINGTYPE: printf(" %s", arg->value.strValue); break;
-                case NUMBER: printf(" %f", arg->value.numValue); break;
+            break;
             }
+            case IDENTIFIER:
+            case STRINGTYPE: printf(" %s", arg->value.strValue); break;
+            case NUMBER: printf(" %f", arg->value.numValue); break;
         }
         puts("");
     }
@@ -212,21 +173,21 @@ void codeGenWalker(struct AST * aTree) {
             {
             union TypeStore value;
             value.strValue = aTree->token->lexeme; 
-            addArg(programAdder(aTree,push), initWizArg(value, CHARADDRESS));
+            programAdder(aTree, push, value, CHARADDRESS);
             break;               
             }
         case NUMBER:
             {
             union TypeStore value;
             value.numValue = atof(aTree->token->lexeme); 
-            addArg(programAdder(aTree,push), initWizArg(value, NUMBER));
+            programAdder(aTree, push, value, NUMBER);
             break;
             }
         case STRINGTYPE:
             {
             union TypeStore value;
             value.strValue = aTree->token->lexeme;
-            addArg(programAdder(aTree,push), initWizArg(value, STRINGTYPE));
+            programAdder(aTree, push, value, STRINGTYPE);
             break;
             }
         case BINOP:
@@ -235,14 +196,14 @@ void codeGenWalker(struct AST * aTree) {
             if (aTree->token->token == ASSIGNMENT && aTree->children[0]->token->token != INDEXIDENT) {
                 union TypeStore value;
                 value.strValue = aTree->children[0]->token->lexeme;
-                addArg(programAdder(aTree,push), initWizArg(value, IDENTIFIER));
+                programAdder(aTree, push, value, IDENTIFIER);
                 i++;
             }
             for (; i < aTree->childCount ; i++)
                 codeGenWalker(aTree->children[i]); 
             union TypeStore value;
             value.opValue = aTree->token->token;
-            addArg(programAdder(aTree,binOpCode), initWizArg(value, BINOP));
+            programAdder(aTree, binOpCode, value, BINOP);
             break;
             }
         default:
@@ -255,19 +216,17 @@ void codeGenWalker(struct AST * aTree) {
             codeGenWalker(aTree->children[0]);
             union TypeStore value;
             value.numValue = 0;
-            long op = programAdder(aTree,jumpNe);
-            addArg(op, initWizArg(value,NUMBER));
+            long op = programAdder(aTree, jumpNe, value, NUMBER);
             codeGenWalker(aTree->children[1]);
             if (aTree->childCount <= 2) {
-                fetchArg(op, 0)->value.numValue = programSize+1;
+                fetchArg(op)->value.numValue = programSize+1;
                 break;
             }
-            long elseJump = programAdder(aTree,jump);
-            addArg(elseJump, initWizArg(value,NUMBER));
-            fetchArg(op, 0)->value.numValue = programSize+1;
+            long elseJump = programAdder(aTree, jump, value,NUMBER);
+            fetchArg(op)->value.numValue = programSize+1;
             if (aTree->children[2]->childCount > 0)
                 codeGenWalker(aTree->children[2]->children[0]);
-            fetchArg(elseJump, 0)->value.numValue = programSize+1;
+            fetchArg(elseJump)->value.numValue = programSize+1;
             break;
             }
         case WHILE:
@@ -277,13 +236,11 @@ void codeGenWalker(struct AST * aTree) {
             codeGenWalker(aTree->children[0]);
             union TypeStore value;
             value.numValue = 0;
-            long op = programAdder(aTree,jumpNe);
-            addArg(op, initWizArg(value,NUMBER));
+            long op = programAdder(aTree, jumpNe, value,NUMBER);
             codeGenWalker(aTree->children[1]);
             value.numValue = (double) programCounterSave;
-            long jmp = programAdder(aTree,jump);
-            addArg(jmp, initWizArg(value,NUMBER));
-            fetchArg(op, 0)->value.numValue = programSize+1;
+            long jmp = programAdder(aTree, jump, value, NUMBER);
+            fetchArg(op)->value.numValue = programSize+1;
             break;
             }
         case OPENBRACE:
@@ -308,63 +265,62 @@ void codeGenWalker(struct AST * aTree) {
             // Initialize an unconditional jump that prevents the function from being called when it is declared
             union TypeStore value;
             value.numValue = 0;
-            long op = programAdder(aTree,jump);
-            addArg(op, initWizArg(value,NUMBER));
-            programAdder(aTree,pushScope);
+            long op = programAdder(aTree, jump, value, NUMBER);
+            programAdder(aTree,pushScope, nullVal, -1);
             // Iterate backwars through the parameters and ensure that they are assigned in the correct order
             for (int i = aTree->children[0]->childCount - 2 ; i > -1; i--) {
                 value.strValue = aTree->children[0]->children[i]->token->lexeme;
-                addArg(programAdder(aTree,push), initWizArg(value, STRINGTYPE));
+                programAdder(aTree, push, value, STRINGTYPE);
                 value.opValue = ASSIGNMENT;
-                addArg(programAdder(aTree,fAssign), initWizArg(value, BINOP));
+                programAdder(aTree,fAssign, value, BINOP);
             }
             // Process related code block
             for (int i = 0; i < aTree->children[0]->children[aTree->children[0]->childCount - 1]->childCount;i++)
                 codeGenWalker(aTree->children[0]->children[aTree->children[0]->childCount - 1]->children[i]);
-            programAdder(aTree,fReturnNoArg);
+            programAdder(aTree,fReturnNoArg, nullVal, -1);
             // Update unconditional jump location
-            fetchArg(op,0)->value.numValue = programSize + 1;
+            fetchArg(op)->value.numValue = programSize + 1;
             break;        
             }
         case IDENTIFIER:
             {
             union TypeStore value;
             value.strValue = aTree->token->lexeme;
-            addArg(programAdder(aTree,pushLookup), initWizArg(value, STRINGTYPE));
+            programAdder(aTree, pushLookup, value, STRINGTYPE);
             break;
             }
         case FUNCTIONCALLIDENT:
             {
-            programAdder(aTree,createStackFrame);
+            programAdder(aTree,createStackFrame, nullVal, -1);
             for (int i = 0 ; i < aTree->childCount ; i++)
                 codeGenWalker(aTree->children[i]);
             union TypeStore value;
             value.strValue = aTree->token->lexeme;
-            addArg(programAdder(aTree,call), initWizArg(value, STRINGTYPE));
+            programAdder(aTree, call, value, STRINGTYPE);
             break;
             }
         case INDEXIDENT:
             {
             union TypeStore value;
             value.strValue = aTree->token->lexeme;
-            addArg(programAdder(aTree,pushLookup), initWizArg(value, STRINGTYPE));
+            programAdder(aTree, pushLookup, value, STRINGTYPE);
             codeGenWalker(aTree->children[0]);
             break;
             }
         case OPENBRACKET:
             {
             codeGenWalker(aTree->children[0]);
-            programAdder(aTree, targetOffset);
+            programAdder(aTree, targetOffset, nullVal, -1);
             break;
             }
         case RETURN:
             {
             if (aTree->childCount == 1) {
                 codeGenWalker(aTree->children[0]);
-                programAdder(aTree,fReturn);
+                programAdder(aTree,fReturn, nullVal, -1);
                 break;
             }
-            programAdder(aTree,fReturnNoArg);
+            programAdder(aTree,fReturnNoArg, nullVal, -1);
             break;
             }
         default:

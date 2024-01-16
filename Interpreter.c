@@ -28,10 +28,6 @@
 extern long programSize; 
 extern struct opCode * program;
 
-// These two are defined in Codegen.c
-extern long wizSlabSize;
-extern struct wizObject * wizSlab;
-
 // Runtime Stack 
 struct wizObject* stack[STACK_LIMIT];
 int stackSize = 0;
@@ -59,8 +55,8 @@ long fetchCurrentLine() {
     return program[instructionIndex].lineNumber;
 }
 
-struct wizObject * fetchArg (long opCodeIndex, int argNum) {
-    return &wizSlab[program[opCodeIndex].argIndexes[argNum]];
+struct wizObject * fetchArg (long opCodeIndex) {
+    return &program[opCodeIndex].wizArg;
 }
 
 
@@ -87,11 +83,7 @@ long popCounterStack(struct lineCounterStack* counterStack) {
 
 void pushCounterStack(struct lineCounterStack* counterStack, long val) {
     if (counterStack->stackSize == STACK_LIMIT)
-        FATAL_ERROR(
-            LANGUAGE, 
-            fetchCurrentLine(), 
-            "Stack Overflow"
-        );
+        FATAL_ERROR(LANGUAGE, fetchCurrentLine(), "Stack Overflow on Counter Stack");
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     counterStack->stack[counterStack->stackSize] = val;
     counterStack->stackSize++;
@@ -131,11 +123,7 @@ int dumpStack() {
 
 struct wizObject* pop() {
     if (stackSize == 0) 
-        FATAL_ERROR(
-            LANGUAGE, 
-            fetchCurrentLine(), 
-            "Attempted to pop an empty Runtime Stack"
-        );
+        FATAL_ERROR(LANGUAGE, fetchCurrentLine(), "Attempted to pop an empty Runtime Stack");
     struct wizObject* element = stack[stackSize-1];
     stack[stackSize-1] = NULL;   
     stackSize--;
@@ -144,11 +132,7 @@ struct wizObject* pop() {
 
 void* pushInternal(struct wizObject* arg) {
     if (stackSize == STACK_LIMIT) 
-        FATAL_ERROR(
-            LANGUAGE, 
-            fetchCurrentLine(), 
-            "Stack Overflow"
-        );
+        FATAL_ERROR(LANGUAGE, fetchCurrentLine(), "Stack Overflow");
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     stack[stackSize] = arg;
     stackSize++;
@@ -159,13 +143,9 @@ void* pushInternal(struct wizObject* arg) {
 
 void* push() {
     if (stackSize == STACK_LIMIT) 
-        FATAL_ERROR(
-            LANGUAGE, 
-            fetchCurrentLine(), 
-            "Stack Overflow"
-        );
+        FATAL_ERROR(LANGUAGE, fetchCurrentLine(), "Stack Overflow");
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
-    stack[stackSize] = fetchArg(instructionIndex,0);
+    stack[stackSize] = fetchArg(instructionIndex);
     stackSize++;
     return NULL;
 }
@@ -174,21 +154,17 @@ void* push() {
 
 void* pushLookup() {
     if (stackSize == STACK_LIMIT) 
-        FATAL_ERROR(
-            LANGUAGE, 
-            fetchCurrentLine(), 
-            "Stack Overflow"
-        );
+        FATAL_ERROR(LANGUAGE, fetchCurrentLine(), "Stack Overflow");
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     struct wizObject ** potentialLookup = getObjectRefFromIdentifier(
-        fetchArg(instructionIndex,0)->value.strValue
+        fetchArg(instructionIndex)->value.strValue
     );
     if (potentialLookup == NULL)
         FATAL_ERROR(
             RUNTIME, 
             fetchCurrentLine(), 
             "Unrecognized symbol %s", 
-            fetchArg(instructionIndex,0)->value.strValue
+            fetchArg(instructionIndex)->value.strValue
         ); 
     stack[stackSize] = *potentialLookup;
     stackSize++;
@@ -201,6 +177,7 @@ void* pushLookup() {
     struct wizObject* lWiz = pop(); \
     union TypeStore typeVal; \
     struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject)); \
+    wizInplace->referenceCount = 0; \
     wizInplace->type = NUMBER; \
     if (lWiz->type == STRINGTYPE && rWiz->type == STRINGTYPE) { \
         typeVal.numValue = (double)(strcmp(rWiz->value.strValue, lWiz->value.strValue) op 0); \
@@ -221,6 +198,7 @@ void* pushLookup() {
     double rightHand; \
     double leftHand; \
     struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject)); \
+    wizInplace->referenceCount = 0; \
     wizInplace->type = NUMBER; \
     union TypeStore temp; \
     struct wizObject* rWiz = pop(); \
@@ -240,13 +218,14 @@ void* pushLookup() {
     } 
 
 void* binOpCode() {
-    enum Tokens operation = fetchArg(instructionIndex,0)->value.opValue;
+    enum Tokens operation = fetchArg(instructionIndex)->value.opValue;
     switch (operation) {
         case ADD: 
             {   
             struct wizObject* val2 = pop();
             struct wizObject* val1 = pop();
             struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject));
+            wizInplace->referenceCount = 0;
             processPlusOperator(val1, val2, wizInplace);
             break;
             }
@@ -254,6 +233,7 @@ void* binOpCode() {
             {
             double rightHand;
             struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject));
+            wizInplace->referenceCount = 0;
             wizInplace->type = NUMBER;
             union TypeStore temp;
             rightHand = pop()->value.numValue;
@@ -274,6 +254,7 @@ void* binOpCode() {
             struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
             if (ref == NULL)
                  ref = declareSymbol(ident->value.strValue);
+            temp->referenceCount++;
             *ref = temp;
             break;
             }
@@ -302,6 +283,7 @@ void* targetOffset() {
     struct wizObject * continuosDataWiz = pop();
     if (continuosDataWiz->type == STRINGTYPE) {
         struct wizObject* characterObj = (struct wizObject*)malloc(sizeof(struct wizObject));
+        characterObj->referenceCount = 0;
         characterObj->type = CHARADDRESS;
         characterObj->value.strValue = &((continuosDataWiz->value.strValue[(int)offsetWiz->value.numValue]));
         pushInternal(characterObj);
@@ -315,17 +297,20 @@ void * fAssign() {
     struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
     if (ref == NULL)
          ref = declareSymbol(ident->value.strValue);
+    temp->referenceCount++;
     *ref = temp;
 }
 
 void * jump() {
-    instructionIndex = (long)fetchArg(instructionIndex,0)->value.numValue - 2;
+    instructionIndex = (long)fetchArg(instructionIndex)->value.numValue - 2;
 }
 
 void * jumpNe() {
     struct wizObject * wizOb = pop(); 
     if ((long)wizOb->value.numValue == 0)
-        instructionIndex = (long)fetchArg(instructionIndex,0)->value.numValue - 2;
+        instructionIndex = (long)fetchArg(instructionIndex)->value.numValue - 2;
+    if (wizOb->referenceCount == 0)
+        free(wizOb);
 }
 
 void * createStackFrame() {
@@ -333,7 +318,7 @@ void * createStackFrame() {
 }
 
 void * call() {
-    char* functionName = fetchArg(instructionIndex,0)->value.strValue;
+    char* functionName = fetchArg(instructionIndex)->value.strValue;
     BuiltInFunctionPtr potentialBuiltin = getBuiltin(functionName);
     if (potentialBuiltin != 0) {
         potentialBuiltin(functionName);
@@ -356,11 +341,7 @@ void * fReturn() {
     instructionIndex = popCounterStack(&returnLines);
     popScope();
     if (stackSize == STACK_LIMIT) 
-        FATAL_ERROR(
-            LANGUAGE, 
-            fetchCurrentLine(), 
-            "Stack Overflow"
-        );
+        FATAL_ERROR(LANGUAGE, fetchCurrentLine(), "Stack Overflow");
     stack[stackSize] = retVal;
     stackSize++;
 }

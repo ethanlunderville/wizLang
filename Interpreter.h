@@ -33,14 +33,14 @@ union TypeStore {
 };
 
 struct wizObject {
+    int referenceCount;
     enum Types type;
     union TypeStore value;  
 };
 
 struct opCode {
     long lineNumber;
-    int currentIndex;
-    long argIndexes[OPCODE_ARGLIMIT];
+    struct wizObject wizArg;
     ByteCodeFunctionPtr associatedOperation;
 };
 
@@ -51,7 +51,7 @@ struct lineCounterStack {
 
 long fetchCurrentLine();
 
-struct wizObject * fetchArg(long opCodeIndex, int argNum);
+struct wizObject * fetchArg (long opCodeIndex);
 struct opCode * codeGen(struct AST * aTree);
 void codeGenWalker(struct AST * aTree);
 void printOpCodes();

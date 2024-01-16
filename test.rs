@@ -1,6 +1,5 @@
-z=2
-
-while (z > (0-10)){
-    echo(z)
-    z--
+def test() {
+    return 1
 }
+
+test()
