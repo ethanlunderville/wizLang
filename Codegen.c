@@ -260,6 +260,7 @@ void codeGenWalker(struct AST * aTree) {
             */
             struct wizObject * lineHolder = (struct wizObject *) malloc(sizeof(struct wizObject));
             lineHolder->type = NUMBER;
+            lineHolder->referenceCount = 1;
             lineHolder->value.numValue = programSize + 2; // Add three to skip the jump
             *funcVal = lineHolder;
             // Initialize an unconditional jump that prevents the function from being called when it is declared

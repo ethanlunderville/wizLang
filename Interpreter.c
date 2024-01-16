@@ -51,6 +51,14 @@ struct Context* context;
 
 */
 
+void cleanWizObject(struct wizObject* wiz) {
+    if (wiz->referenceCount != 0)
+        return;
+    if (wiz->type == STRINGTYPE)
+        free(wiz->value.strValue);
+    free(wiz);
+}
+
 long fetchCurrentLine() {
     return program[instructionIndex].lineNumber;
 }
@@ -188,6 +196,8 @@ void* pushLookup() {
     } \
     wizInplace->value = typeVal; \
     pushInternal(wizInplace); \
+    cleanWizObject(rWiz); \
+    cleanWizObject(lWiz); \
     break; \
     } \
 
@@ -214,6 +224,8 @@ void* pushLookup() {
     temp.numValue = leftHand op rightHand; \
     wizInplace->value = temp; \
     pushInternal(wizInplace); \
+    cleanWizObject(rWiz); \
+    cleanWizObject(lWiz); \
     break; \
     } 
 
@@ -227,6 +239,8 @@ void* binOpCode() {
             struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject));
             wizInplace->referenceCount = 0;
             processPlusOperator(val1, val2, wizInplace);
+            cleanWizObject(val1);
+            cleanWizObject(val2); 
             break;
             }
         case POWER:
@@ -236,10 +250,14 @@ void* binOpCode() {
             wizInplace->referenceCount = 0;
             wizInplace->type = NUMBER;
             union TypeStore temp;
-            rightHand = pop()->value.numValue;
-            temp.numValue = pow(pop()->value.numValue, rightHand);
+            struct wizObject * rWiz = pop();
+            rightHand = rWiz->value.numValue;
+            struct wizObject * lWiz = pop();
+            temp.numValue = pow(lWiz->value.numValue, rightHand);
             wizInplace->value = temp;
             pushInternal(wizInplace);
+            cleanWizObject(lWiz);
+            cleanWizObject(rWiz);
             break;
             }
         case ASSIGNMENT: 
@@ -254,8 +272,11 @@ void* binOpCode() {
             struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
             if (ref == NULL)
                  ref = declareSymbol(ident->value.strValue);
-            temp->referenceCount++;
+            if (temp->referenceCount != -1)
+                temp->referenceCount++;
             *ref = temp;
+            cleanWizObject(temp);
+            cleanWizObject(ident);
             break;
             }
         case PIPE: 
@@ -288,6 +309,8 @@ void* targetOffset() {
         characterObj->value.strValue = &((continuosDataWiz->value.strValue[(int)offsetWiz->value.numValue]));
         pushInternal(characterObj);
     }
+    cleanWizObject(offsetWiz);
+    cleanWizObject(continuosDataWiz);
 }
 
 void * fAssign() {
@@ -297,8 +320,11 @@ void * fAssign() {
     struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
     if (ref == NULL)
          ref = declareSymbol(ident->value.strValue);
-    temp->referenceCount++;
+    if (temp->referenceCount != -1)
+        temp->referenceCount++;
     *ref = temp;
+    cleanWizObject(temp);
+    cleanWizObject(ident);
 }
 
 void * jump() {
@@ -309,8 +335,7 @@ void * jumpNe() {
     struct wizObject * wizOb = pop(); 
     if ((long)wizOb->value.numValue == 0)
         instructionIndex = (long)fetchArg(instructionIndex)->value.numValue - 2;
-    if (wizOb->referenceCount == 0)
-        free(wizOb);
+    cleanWizObject(wizOb);
 }
 
 void * createStackFrame() {
@@ -335,8 +360,8 @@ void * call() {
 void * fReturn() {
     struct wizObject* retVal = pop();
     int stackSizeTarget = stackFrames.stack[stackFrames.stackSize - 1];
-    while (stackSize != stackSizeTarget)
-        pop();
+    while (stackSize != stackSizeTarget) 
+        cleanWizObject(pop());    
     popCounterStack(&stackFrames);
     instructionIndex = popCounterStack(&returnLines);
     popScope();
@@ -349,7 +374,7 @@ void * fReturn() {
 void * fReturnNoArg() {
     int stackSizeTarget = stackFrames.stack[stackFrames.stackSize - 1];
     while (stackSize != stackSizeTarget)
-        pop();
+        cleanWizObject(pop());
     popCounterStack(&stackFrames);
     instructionIndex = popCounterStack(&returnLines);
     popScope();
@@ -364,7 +389,6 @@ void * fReturnNoArg() {
     Driver code for the VM.
 
 */
-
 void interpret() {
     while (instructionIndex < programSize) {
         program[instructionIndex].associatedOperation();
@@ -376,4 +400,6 @@ void interpret() {
         printContext();
 #endif
     }
+    // Pops the global scope
+    popScope(); 
 }

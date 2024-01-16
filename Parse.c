@@ -23,6 +23,7 @@
 #include <assert.h>
 #include "Parse.h"
 #include "Error.h"
+#include "Mem.h"
 
 struct TokenStruct * programList; // Series of tokens representing the source program.
 long currentProgramListCounter = 0;
@@ -42,6 +43,14 @@ enum Tokens getKeywordFromString(char * str) {
     if (strcmp(str, "def") == 0) return DEF;
     if (strcmp(str, "return") == 0) return RETURN;
     return -1;
+}
+
+char* getKeywordStringIndex(char* word) {
+    for (int i = 0 ; i < KEYWORD_LISTSIZE ; i++) {
+        if (strcmp(word, keywords[i]) == 0)
+            return keywords[i];
+    }
+    return NULL;
 }
 
 // Used for debug print out
@@ -260,24 +269,36 @@ void lex(char* buffer, struct TokenStruct * programList) {
                 FATAL_ERROR(PARSE, lineNo, "Unrecognized symbol: %s", buffer[i]);
             char * alphaLex = createAlphaLexeme(&i, buffer);
             if (strcmp(alphaLex, "error") == 0) 
-                FATAL_ERROR(PARSE, lineNo, "Debug err");
+                FATAL_ERROR(PARSE, lineNo, "Debug Error");
             if (getKeywordFromString(alphaLex) != -1) {
-                addToProgramList(alphaLex, NONE, lineNo ,getKeywordFromString(alphaLex));   
+                addToProgramList(getKeywordStringIndex(alphaLex), NONE, lineNo ,getKeywordFromString(alphaLex));   
+                free(alphaLex);
                 continue;
             } 
             addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
             i++;
+            /*
+                Expansion of ++ and -- operators.
+
+                The copyStr function is called since this is an
+                expansion. Normally when the the deallocation
+                stage looks at the number and alpha numeric
+                lexemes it frees them so they need to be on the
+                heap. If i did not copy the string to a heap
+                allocated version it would essentially be trying
+                to free static memory.
+            */
             if (buffer[i] == '+' && checkNext(buffer,i,'+')) {
                 addToProgramList("=", BINOP, lineNo, ASSIGNMENT);
-                addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
+                addToProgramList(copyStr(alphaLex), NONE, lineNo ,IDENTIFIER);
                 addToProgramList("+", BINOP, lineNo ,ADD);
-                addToProgramList("1", NUMBER, lineNo ,NUM);
+                addToProgramList(copyStr("1"), NUMBER, lineNo ,NUM);
                 i++;
             } else if (buffer[i] == '-' && checkNext(buffer,i,'-')) {
                 addToProgramList("=", BINOP, lineNo, ASSIGNMENT);
-                addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
+                addToProgramList(copyStr(alphaLex), NONE, lineNo ,IDENTIFIER);
                 addToProgramList("-", BINOP, lineNo ,SUBTRACT);
-                addToProgramList("1", NUMBER, lineNo ,NUM);
+                addToProgramList(copyStr("1"), NUMBER, lineNo ,NUM);
                 i++;
             } else {
                 i--;
@@ -321,17 +342,25 @@ void printLexemes (struct TokenStruct * programList, long size) {
 }
 
 // Frees tokens of the program.
-
+void breaker() {}
 void freeProgramList(struct TokenStruct * programList, long size) {
-    for (long i = 0; i < size ; ++i) {
+    for (long i = 0; i < size ; i++) {
         if (
-            programList[i].lexeme != NULL
+            programList[i].lexeme != NULL 
+            && 
+            getKeywordStringIndex(programList[i].lexeme) == NULL
             /*SINCE THESE TYPES HAVE ARE MALLOCED*/
-            && programList[i].token == STRING
-            && programList[i].token == NUM
-            && programList[i].token == IDENTIFIER
-            ) 
+            && 
+            (  programList[i].token == STRING
+            || programList[i].token == NUM
+            || programList[i].token == IDENTIFIER
+            || programList[i].token == FUNCTIONCALLIDENT
+            || programList[i].token == INDEXIDENT
+            )
+            ) {
             free(programList[i].lexeme);
+            breaker();
+            }
     }
     free(programList);
 }

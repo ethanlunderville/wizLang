@@ -44,8 +44,8 @@ void printAST(struct AST* ast){
 
 void addChild(struct AST* tree, struct AST* child) {
     if (tree->childCount == tree->childLimit - 1) {
-        tree->children = realloc(tree->children, tree->childLimit*2);
         tree->childLimit = tree->childLimit*2;
+        tree->children = realloc(tree->children, tree->childLimit * sizeof(struct AST));
     } 
     tree->children[tree->childCount] = child;
     tree->childCount++;
@@ -67,5 +67,6 @@ struct AST* initAST(struct TokenStruct * token) {
 void deallocateAST(struct AST * headNode) {
     for(int i = 0 ; i < headNode->childCount ; i++)
         deallocateAST(headNode->children[i]);
+    free(headNode->children);
     free(headNode);
 }

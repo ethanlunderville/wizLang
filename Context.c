@@ -54,9 +54,15 @@ void* pushScope() {
 // When a function returns a context gets poped from the context stack
 
 void* popScope() {
-    if (context->cPtr == NULL)
-        FATAL_ERROR(LANGUAGE, 0, "ATTEMPTED TO POP EMPTY SCOPE");
+    for (int i = 0 ; i < context->currentIndex ; i++) {
+        context->map[i].value->referenceCount--;
+        if (context->map[i].value != NULL 
+        && context->map[i].value->referenceCount == 0)
+            free(context->map[i].value);
+    }
+    struct Context* temp = context;
     context = context->cPtr;
+    free(temp);
 }
 
 struct wizObject ** getObjectRefFromIdentifier(char * ident) {
@@ -96,10 +102,11 @@ void printContext() {
             printf("%s : ", ref->map[i].identifier);
             switch (ref->map[i].value->type) 
             {
-            case STRINGTYPE: printf("%s\n",ref->map[i].value->value.strValue); break;
-            case NUMBER: printf("%f\n",ref->map[i].value->value.numValue); break;
-            case CHARADDRESS: printf("%c\n",*(ref->map[i].value->value.strValue)); break;
+            case STRINGTYPE: printf("%s :: ",ref->map[i].value->value.strValue); break;
+            case NUMBER: printf("%f :: ",ref->map[i].value->value.numValue); break;
+            case CHARADDRESS: printf("%c :: ",*(ref->map[i].value->value.strValue)); break;
             }
+            printf("refCount : %i\n", ref->map[i].value->referenceCount);
             for (int j = 0 ; j < count ; j++) 
                 printf(" ");
             puts("-------------------------");

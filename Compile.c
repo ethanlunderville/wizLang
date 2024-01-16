@@ -85,9 +85,9 @@ int main () {
     puts("*** END PRINTING BYTECODES ***");
 #endif
     deallocateAST(aTree);
-    freeProgramList(programList, programListSize);
     /*PROGRAM EXECUTES*/
     interpret();
+    freeProgramList(programList, programListSize);    
     free(program);
     free(buffer);
     return EXIT_SUCCESS;
