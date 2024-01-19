@@ -17,7 +17,7 @@ debug: $(OUT)
 	gdb ./$(OUT)
 
 vrun: $(OUT)
-	valgrind ./$(OUT)
+	valgrind --leak-check=full --show-leak-kinds=all ./$(OUT)
 
 clean:
 	rm -f $(OUT)

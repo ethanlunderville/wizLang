@@ -42,6 +42,9 @@ long instructionIndex = 0;
 // Current program context
 struct Context* context;
 
+// Pseudo Null
+struct wizObject nullV;
+
 /*
 
     This is to fetch args from the flattened list of
@@ -266,12 +269,28 @@ void* binOpCode() {
             struct wizObject * ident = pop();
             if (ident->type == CHARADDRESS) {
                 ident->value.strValue[0] = *(temp->value.strValue);
+                cleanWizObject(temp);
+                cleanWizObject(ident);
                 break;
             }
             assert(ident->type == IDENTIFIER);
             struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
             if (ref == NULL)
                  ref = declareSymbol(ident->value.strValue);
+            else if ((*ref)->referenceCount != -1) {
+                // Reduce the referenceCount of the currently pointed to 
+                // wizObject and potentially clean it if it exists.
+                (*ref)->referenceCount--;
+                cleanWizObject(*ref);
+            }
+            /*
+
+                if the refCount is negative -1 it means that it is
+                an opCode argument (Not freeable until program
+                terminates) other wise it is incrmented since an
+                identifier now points to it
+
+            */
             if (temp->referenceCount != -1)
                 temp->referenceCount++;
             *ref = temp;
@@ -316,10 +335,30 @@ void* targetOffset() {
 void * fAssign() {
     struct wizObject * ident = pop();
     struct wizObject * temp = pop();
+    if (ident->type == CHARADDRESS) {
+        ident->value.strValue[0] = *(temp->value.strValue);
+        cleanWizObject(temp);
+        cleanWizObject(ident);
+        return NULL;
+    }
     assert(ident->type == STRINGTYPE);
     struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
     if (ref == NULL)
          ref = declareSymbol(ident->value.strValue);
+    else if ((*ref)->referenceCount != -1) { 
+        // Reduce the referenceCount of the currently pointed to 
+        // wizObject and potentially clean it if it exists.
+        (*ref)->referenceCount--;
+        cleanWizObject(*ref);
+    }
+    /*
+
+        if the refCount is negative -1 it means that it is
+        an opCode argument (Not freeable until program
+        terminates) other wise it is incrmented since an
+        identifier now points to it
+    
+    */
     if (temp->referenceCount != -1)
         temp->referenceCount++;
     *ref = temp;
@@ -378,6 +417,17 @@ void * fReturnNoArg() {
     popCounterStack(&stackFrames);
     instructionIndex = popCounterStack(&returnLines);
     popScope();
+    pushInternal(&nullV);
+}
+
+void * popClean() {
+    cleanWizObject(pop());
+}
+
+void initNullV() {
+    nullV.referenceCount = -1;
+    nullV.type = NUMBER;
+    nullV.value.numValue = 0;  
 }
 
 /*
@@ -389,7 +439,9 @@ void * fReturnNoArg() {
     Driver code for the VM.
 
 */
+
 void interpret() {
+    initNullV();
     while (instructionIndex < programSize) {
         program[instructionIndex].associatedOperation();
         instructionIndex++;

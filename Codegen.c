@@ -57,6 +57,9 @@ extern struct Context* context;
 // Faux null union
 union TypeStore nullVal;
 
+extern struct TokenStruct exprNoAssign;
+extern struct TokenStruct expr;
+
 ////////////////////////////////////////////////////////////////
 // CODEGEN HELPERS
 ////////////////////////////////////////////////////////////////
@@ -106,6 +109,7 @@ void printOpCodes() {
         else if (program[i].associatedOperation == &fReturnNoArg) printf("RETURN <NULL>");
         else if (program[i].associatedOperation == &call) printf("CALL");
         else if (program[i].associatedOperation == &targetOffset) printf("PUSHOFFSET");
+        else if (program[i].associatedOperation == &popClean) printf("POPCLEAN");
         else continue;
         struct wizObject* arg = fetchArg(i);
         switch (arg->type) {
@@ -169,6 +173,15 @@ void codeGenWalker(struct AST * aTree) {
     }
     switch (aTree->token->type) {
         case NONE: break;
+        case EXPRESSION_NOASSIGN: 
+        case EXPRESSION:
+            {
+            for (int i = 0 ; i < aTree->childCount ; i++)
+                codeGenWalker(aTree->children[i]);
+            if (aTree->token->type == EXPRESSION_NOASSIGN)
+                programAdder(aTree, popClean, nullVal, -1);
+            break;
+            }
         case CHARADDRESS: 
             {
             union TypeStore value;
@@ -324,8 +337,7 @@ void codeGenWalker(struct AST * aTree) {
             programAdder(aTree,fReturnNoArg, nullVal, -1);
             break;
             }
-        default:
-            break;
+        default: break;
     }
     return;
 }

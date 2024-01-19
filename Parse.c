@@ -30,6 +30,11 @@ long currentProgramListCounter = 0;
 long programListSize = 0;
 long programListCapacity = BASE_PROGRAM_LIST_SIZE;
 
+/* PSUEDO TOKENS TO CLEAN DETERMINE IF STACK
+ NEEDS CLEANING AFTER EXPRESSION IS EVALUATED  */
+struct TokenStruct exprNoAssign;
+struct TokenStruct expr;
+
 ////////////////////////////////////////////////////////////////
 // LEXING RELATED FUNCTIONS
 ////////////////////////////////////////////////////////////////
@@ -87,6 +92,14 @@ const char* getTokenName(enum Tokens token) {
         case WHILE: return "WHILE";
         case ENDOFFILE: return "ENDOFFILE";
         default: return "Token not found";
+    }
+}
+
+char escapeMap(char c) {
+    switch (c) {
+        case 'n': return '\n';
+        case 't': return '\t';
+        case '0': return '\0';
     }
 }
 
@@ -342,7 +355,7 @@ void printLexemes (struct TokenStruct * programList, long size) {
 }
 
 // Frees tokens of the program.
-void breaker() {}
+
 void freeProgramList(struct TokenStruct * programList, long size) {
     for (long i = 0; i < size ; i++) {
         if (
@@ -359,8 +372,7 @@ void freeProgramList(struct TokenStruct * programList, long size) {
             )
             ) {
             free(programList[i].lexeme);
-            breaker();
-            }
+        }
     }
     free(programList);
 }
@@ -374,7 +386,7 @@ void freeProgramList(struct TokenStruct * programList, long size) {
 struct AST* sSubScriptTree() {
     struct AST* sTree = initAST(getCurrentTokenStruct());
     expect(OPENBRACKET);
-    addChild(sTree, sExpression());
+    addChild(sTree, sExpression(&exprNoAssign));
     expect(CLOSEBRACKET);
     if (isCurrentToken(OPENBRACKET))
         addChild(sTree, sSubScriptTree());
@@ -390,7 +402,7 @@ struct AST* sIdentTree() {
             identTree->token->token = FUNCTIONCALLIDENT;
             scan();
             while (!isCurrentToken(RIGHTPARENTH)){
-                addChild(identTree, sExpression());        
+                addChild(identTree, sExpression(&expr));        
                 if (!isCurrentToken(RIGHTPARENTH)) 
                     expect(COMMA);
             }
@@ -414,7 +426,7 @@ struct AST* sReturn() {
     struct AST* reTree = initAST(getCurrentTokenStruct());
     expect(RETURN);
     if (onExpressionToken())
-        addChild(reTree, sExpression());
+        addChild(reTree, sExpression(&expr));
     return reTree;
 }
 
@@ -425,7 +437,7 @@ struct AST* sBlock() {
     expect(OPENBRACE);
     while (!isCurrentToken(CLOSEBRACE)) {
         if (onExpressionToken())
-            addChild(bTree, sExpression());
+            addChild(bTree, sExpression(&exprNoAssign));
         else if (onConditionalToken())
             addChild(bTree, sConditional());
         else if (isCurrentToken(RETURN))
@@ -446,7 +458,7 @@ struct AST* sConditional() {
             {
             scan();
             expect(LEFTPARENTH);
-            addChild(condTree, sExpression());
+            addChild(condTree, sExpression(&expr));
             expect(RIGHTPARENTH);
             addChild(condTree, sBlock());
             if (!isCurrentToken(ELSE)) 
@@ -464,7 +476,7 @@ struct AST* sConditional() {
             {
             scan();
             expect(LEFTPARENTH);
-            addChild(condTree, sExpression());
+            addChild(condTree, sExpression(&expr));
             expect(RIGHTPARENTH);
             addChild(condTree, sBlock());
             break;
@@ -511,12 +523,20 @@ struct AST* sFunctionDeclaration() {
 
 */
 
-struct AST* parse() {
+void initParserData() {
     currentProgramListCounter = 0;
+    expr.type = EXPRESSION;
+    exprNoAssign.type = EXPRESSION_NOASSIGN;
+    expr.token = BEGINOPERATORS;
+    exprNoAssign.token = BEGINOPERATORS;
+}
+
+struct AST* parse() {
+    initParserData();
     struct AST* aTree = initAST(NULL);
     while (currentProgramListCounter < programListSize) {
         if (onExpressionToken())
-            addChild(aTree, sExpression());
+            addChild(aTree, sExpression(&exprNoAssign));
         else if (onConditionalToken())
             addChild(aTree, sConditional());
         else if (onFunctionDeclaration())
@@ -621,6 +641,7 @@ bool onExpressionBreaker() {
        ||isCurrentToken(RIGHTPARENTH)
        ||isCurrentToken(COMMA)
        ||isCurrentToken(CLOSEBRACKET)
+       ||isCurrentToken(CLOSEBRACE)
     ) return true;
     return false;
 }
@@ -628,16 +649,14 @@ bool onExpressionBreaker() {
 // Parser utility
 
 void expect(enum Tokens token) {
-    if (programList[currentProgramListCounter].token != token) {
+    if (programList[currentProgramListCounter].token != token)
         FATAL_ERROR(
             PARSE,
             getCurrentTokenStruct()->line,
-            "ERROR IN PARSER:: EXPECTED: %s, GOT: %s\n", 
+            "EXPECTED: %s, GOT: %s\n", 
             getTokenName(token), 
             getTokenName(programList[currentProgramListCounter].token) 
-        );
-        exit(1);        
-    }
+        );     
     scan();
 }
 
@@ -736,9 +755,12 @@ void createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(
     push(operandStack, operatorHold);
 }
 
+
+
 // Main algorithm for parsing expressions. Similar to shunting yard.
 
-struct AST * sExpression() {
+struct AST * sExpression(struct TokenStruct * exprType) {
+    struct AST * exprTree = initAST(exprType);
     struct ASTStack operatorStack;
     operatorStack.size = 0;
     struct ASTStack operandStack;
@@ -753,7 +775,7 @@ struct AST * sExpression() {
             push(&operandStack, sIdentTree());
         } else if (isCurrentToken(LEFTPARENTH)){
             scan();
-            push(&operandStack, sExpression());
+            push(&operandStack, sExpression(&expr));
             expect(RIGHTPARENTH);
         } else if (onData()) {
             push(&operandStack, initAST(getCurrentTokenStruct()));
@@ -765,6 +787,8 @@ struct AST * sExpression() {
         printf("%s ", getCurrentTokenStruct()->lexeme);
 #endif
         if (onOperatorToken()) {
+            if (isCurrentToken(ASSIGNMENT))
+                exprTree->token = &expr;
             struct AST* opTree = initAST(getCurrentTokenStruct());
             //WHILE THE TOP OPERATOR ON THE TOP OF THE STACK HAS HIGHER PRECEDENCE THAN THE CURRENT OPERATOR
             while (operatorStack.size != 0 
@@ -782,7 +806,9 @@ struct AST * sExpression() {
         FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
     while (operandStack.size != 1)
         createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(&operandStack, &operatorStack);
-    return pop(&operandStack);
+    addChild(exprTree,pop(&operandStack));
+    return exprTree;
+
 }
 
 

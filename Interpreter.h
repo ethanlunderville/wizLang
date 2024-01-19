@@ -49,6 +49,8 @@ struct lineCounterStack {
     int stackSize;
 };
 
+void cleanWizObject(struct wizObject* wiz);
+
 long fetchCurrentLine();
 
 struct wizObject * fetchArg (long opCodeIndex);
@@ -70,6 +72,7 @@ void* binOpCode();
 void* jump();
 void* jumpNe();
 void* pushLookup();
+void* popClean();
 
 int dumpStack();
 void interpret();

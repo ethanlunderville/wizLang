@@ -58,7 +58,7 @@ enum Tokens {
     ENDOPERANDS,
     COMMA,
     ENDLINE,
-    
+
     IF,
     ELSE,
     WHILE,
@@ -88,6 +88,8 @@ enum Types {
     STRINGTYPE,
     BINOP,
     OP,
+    EXPRESSION,
+    EXPRESSION_NOASSIGN,
     //Chars are handled uniquely to prevent the need to make a wizobject for every char
     CHARADDRESS, 
     CHAR,

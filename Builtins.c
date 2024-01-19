@@ -18,6 +18,8 @@
 #include "Interpreter.h"
 
 extern struct wizObject* stack;
+extern struct wizObject nullV;
+
 
 BuiltInFunctionPtr getBuiltin(char * funcName) {
     if (strcmp("echo", funcName)==0) return &fEcho;
@@ -32,4 +34,6 @@ void* fEcho() {
     case STRINGTYPE: printf("%s\n",val->value.strValue); break;
     case CHARADDRESS: printf("%c\n",*(val->value.strValue)); break;
     }
+    cleanWizObject(val);
+    pushInternal(&nullV);
 }
