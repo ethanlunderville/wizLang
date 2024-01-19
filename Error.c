@@ -34,6 +34,7 @@ void FATAL_ERROR(enum ErrorType err, long line, const char* format, ...) {
         case CODEGEN: printf("\033[1;31m CODEGEN ERROR :: \033[0m"); break;
         case RUNTIME: printf("\033[1;31m RUNTIME ERROR :: \033[0m"); break;
         case LANGUAGE: printf("\033[1;31m LANGUAGE ERROR :: \033[0m"); break;
+        case IO: printf("\033[1;31m IO ERROR :: \033[0m"); break;
     }
     printf("\033[1;31m");
     va_list args;
@@ -54,13 +55,19 @@ void FATAL_ERROR(enum ErrorType err, long line, const char* format, ...) {
         } else if (*format == 's') {
             char *str = va_arg(args, char *);
             printf("%s", str);
-        } else {
-            printf("Unsupported format specifier: %c\n", *format);
+        } else if (*format == 'c') {
+            char ch = va_arg(args, int);
+            printf("%c", ch);
         }
         format++;
     }
     va_end(args);
-    printf(" :: LINE: %li\033[0m\n", line);
+    if (err != IO && err != LANGUAGE)
+        printf(" :: LINE: %li\033[0m\n", line);
+    else {
+        printf("\n");
+        exit(EXIT_FAILURE);
+    }
     long lineCount = 1;
     long lowBound = line - 3 >= 0 ? line - 3 : 0;
     long highBound = line + 3;

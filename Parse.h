@@ -20,6 +20,7 @@
 
 char* createSingleCharacterLexeme(char c);
 char* createNumberLexeme(long * bufferIndex, char * buffer);
+char* createStringLexeme(long * bufferIndex, char * buffer, long lineNo);
 void addToProgramList(char * lexeme, enum Types type ,long lineNo, enum Tokens token);
 void printLexemes(struct TokenStruct * programList, long size);
 void freeProgramList(struct TokenStruct * programList, long size);

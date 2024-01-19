@@ -95,11 +95,16 @@ const char* getTokenName(enum Tokens token) {
     }
 }
 
-char escapeMap(char c) {
+/* CHAR PTR MAP */
+char nEscape = '\n';
+char tEscape = '\t';
+char nullEscape = '\0';
+char* escapeMap(char c) {
     switch (c) {
-        case 'n': return '\n';
-        case 't': return '\t';
-        case '0': return '\0';
+        case 'n': return &nEscape;
+        case 't': return &tEscape;
+        case '0': return &nullEscape;
+        default: return 0;
     }
 }
 
@@ -123,14 +128,35 @@ char* createNumberLexeme(long * bufferIndex, char * buffer) {
 
 // Allocates space for and returns a string lexeme.
 
-char * createStringLexeme(long * bufferIndex, char * buffer) {
+char * createStringLexeme(long * bufferIndex, char * buffer, long lineNo) {
     long currentIndex = *bufferIndex;
-    while (buffer[currentIndex] != '"' && buffer[currentIndex] != '\0')
+    long newCurrentIndex = *bufferIndex;
+    int slashCount = 0;
+    long strSize;
+    char* lexeme;
+    while (buffer[currentIndex] != '"' && buffer[currentIndex] != '\0'){
+        if (buffer[currentIndex] == '\\') 
+            slashCount++;
         currentIndex++;
-    long diff = currentIndex - *bufferIndex;
-    char* lexeme = (char*)malloc(diff+1);
-    memcpy(lexeme, buffer + (*bufferIndex), diff);
-    lexeme[diff] = '\0';
+    }
+    strSize = (currentIndex - *bufferIndex) + 1 - slashCount;
+    lexeme = (char*)malloc(strSize);
+    for (int i = 0 ; i < strSize - 1 ; i++) {
+        if (buffer[newCurrentIndex] == '\\') {
+            newCurrentIndex++;
+            lexeme[i] = *escapeMap(buffer[newCurrentIndex]);
+            if (!(lexeme[i]))
+                FATAL_ERROR(
+                    PARSE, 
+                    lineNo, 
+                    "Unrecognized escape character: %c%c", '\\',buffer[newCurrentIndex]
+                );
+        } else {
+            lexeme[i] = buffer[newCurrentIndex];
+        }
+        newCurrentIndex++;
+    }
+    lexeme[strSize-1] = '\0';
     *bufferIndex = currentIndex;
     return lexeme;
 }
@@ -186,7 +212,12 @@ void lex(char* buffer, struct TokenStruct * programList) {
             i++;
             if (buffer[i] == '\'')
                 FATAL_ERROR(PARSE, lineNo, "Illegal empty character");
-            addToProgramList(&buffer[i], CHARADDRESS, lineNo , CHARACTER_LITERAL);
+            if (buffer[i] == '\\') {
+                i++;
+                addToProgramList(escapeMap(buffer[i]), CHARADDRESS, lineNo , CHARACTER_LITERAL);
+            }
+            else
+                addToProgramList(&buffer[i], CHARADDRESS, lineNo , CHARACTER_LITERAL);
             i++;
             if (buffer[i] != '\'')
                 FATAL_ERROR(PARSE, lineNo, "Expected single quote after character"); 
@@ -267,7 +298,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
         }
         case '"': {
             i++; 
-            addToProgramList(createStringLexeme(&i, buffer), STRINGTYPE, lineNo ,STRING); 
+            addToProgramList(createStringLexeme(&i, buffer, lineNo), STRINGTYPE, lineNo ,STRING); 
             break;
         }
         case ' ':
@@ -275,16 +306,24 @@ void lex(char* buffer, struct TokenStruct * programList) {
         case '\t':
             break;
         default:
+            char * alphaLex;
             if (isdigit(buffer[i])) {
-                addToProgramList(createNumberLexeme(&i, buffer), NUMBER, lineNo ,NUM);
+                addToProgramList(
+                    createNumberLexeme(&i, buffer), NUMBER, lineNo, NUM
+                );
                 continue;
             } else if (!isalpha(buffer[i])) 
                 FATAL_ERROR(PARSE, lineNo, "Unrecognized symbol: %s", buffer[i]);
-            char * alphaLex = createAlphaLexeme(&i, buffer);
+            alphaLex = createAlphaLexeme(&i, buffer);
             if (strcmp(alphaLex, "error") == 0) 
-                FATAL_ERROR(PARSE, lineNo, "Debug Error");
+                FATAL_ERROR(PARSE, lineNo, "MANUAL DEBUG ERROR");
             if (getKeywordFromString(alphaLex) != -1) {
-                addToProgramList(getKeywordStringIndex(alphaLex), NONE, lineNo ,getKeywordFromString(alphaLex));   
+                addToProgramList(
+                    getKeywordStringIndex(alphaLex), 
+                    NONE, 
+                    lineNo,
+                    getKeywordFromString(alphaLex)
+                );   
                 free(alphaLex);
                 continue;
             } 
@@ -546,7 +585,7 @@ struct AST* parse() {
         else if (getCurrentTokenStruct()->token == ENDOFFILE)
             break;
         else
-            FATAL_ERROR(PARSE, getCurrentLine(), "Unexpected symbol");
+            FATAL_ERROR(PARSE, getCurrentLine(), "Unexpected Symbol");
     }
     return aTree;
 }

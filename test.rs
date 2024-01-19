@@ -1,12 +1,7 @@
-def test(n) {
-    echo('f')
-}
-if (0) {
-    //echo(test('f'))
-    1+1
-} else if (1) {
-    echo(test('f'))
-}
+x = "thisnis a test"
+f = '\t'
+echo('{'+f + 'n' + "}")
+
 /*
 size = 14
 i = 0

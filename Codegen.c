@@ -90,56 +90,77 @@ long programAdder(
     return programSize-1;
 }
 
+char * opCodeStringMap (ByteCodeFunctionPtr fP) { 
+    if (fP == &push) return "PUSH";
+    else if (fP == &binOpCode) return "BINOP";
+    else if (fP == &jump) return "JUMP";
+    else if (fP == &jumpNe) return "JUMPNE";
+    else if (fP == &pushScope) return "PUSHSCOPE";
+    else if (fP == &popScope) return "POPSCOPE";
+    else if (fP == &pushLookup) return "PUSHLOOKUP";
+    else if (fP == &fAssign) return "ASSIGNF";
+    else if (fP == &createStackFrame) return "STACKFRAME";
+    else if (fP == &fReturn) return "RETURN";
+    else if (fP == &fReturnNoArg) return "RETURN <NULL>";
+    else if (fP == &call) return "CALL";
+    else if (fP == &targetOffset) return "PUSHOFFSET";
+    else if (fP == &popClean) return "POPCLEAN";
+    else return 0x0;
+}
+
+char* getOperationString(enum Tokens op) {
+    switch (op) {
+        case ADD: return " +";
+        case SUBTRACT: return " -";
+        case MULTIPLY: return " *";
+        case DIVIDE: return " /";
+        case POWER: return " ^";
+        case LESSTHAN: return " <";
+        case GREATERTHAN: return " >";
+        case GREATEREQUAL: return " >=";
+        case LESSEQUAL: return " <=";
+        case AND: return " &&";
+        case OR: return " ||";
+        case ASSIGNMENT: return " =";
+        case PIPE: return " |";
+        case EQUAL: return " ==";
+        case NOTEQUAL: return " !=";
+        default: FATAL_ERROR(
+            LANGUAGE,
+            -1, 
+            "Unrecogized Operator in getOperationString()"
+        );
+    }
+}
+
 // Prints the opcode intermediate representation
 
 void printOpCodes() {
     long i = 0;
+    char * currStr;
     for (; i < programSize ; i++) {
         printf("%li) ", i+1);
-        if (program[i].associatedOperation == &push) printf("PUSH"); 
-        else if (program[i].associatedOperation == &binOpCode) printf("BINOP");
-        else if (program[i].associatedOperation == &jump) printf("JUMP");
-        else if (program[i].associatedOperation == &jumpNe) printf("JUMPNE");
-        else if (program[i].associatedOperation == &pushScope) printf("PUSHSCOPE");
-        else if (program[i].associatedOperation == &popScope) printf("POPSCOPE");
-        else if (program[i].associatedOperation == &pushLookup) printf("PUSHLOOKUP");
-        else if (program[i].associatedOperation == &fAssign) printf("ASSIGNF");
-        else if (program[i].associatedOperation == &createStackFrame) printf("STACKFRAME");
-        else if (program[i].associatedOperation == &fReturn) printf("RETURN");
-        else if (program[i].associatedOperation == &fReturnNoArg) printf("RETURN <NULL>");
-        else if (program[i].associatedOperation == &call) printf("CALL");
-        else if (program[i].associatedOperation == &targetOffset) printf("PUSHOFFSET");
-        else if (program[i].associatedOperation == &popClean) printf("POPCLEAN");
-        else continue;
+        currStr = opCodeStringMap(program[i].associatedOperation);
+        if (!currStr)
+            continue;
+        printf("%s", currStr);
         struct wizObject* arg = fetchArg(i);
         switch (arg->type) {
-            case BINOP:
-            {
-            switch (arg->value.opValue) 
-                {
-                case (ADD) : printf(" +"); break;
-                case (SUBTRACT) : printf(" -"); break;
-                case (MULTIPLY) : printf(" *"); break;
-                case (DIVIDE) : printf(" /"); break;
-                case (POWER) : printf(" ^"); break;
-                case (LESSTHAN) : printf(" <"); break;
-                case (GREATERTHAN) : printf(" >"); break;
-                case (GREATEREQUAL) : printf(" >="); break;
-                case (LESSEQUAL) : printf(" <="); break;
-                case (AND) : printf(" &&"); break;
-                case (OR) : printf(" ||"); break;
-                case (ASSIGNMENT) : printf(" ="); break;
-                case (PIPE) : printf(" |"); break;
-                case (EQUAL) : printf(" =="); break;
-                case (NOTEQUAL) : printf(" !="); break;
-                }
-            break;
-            }
             case IDENTIFIER:
-            case STRINGTYPE: printf(" %s", arg->value.strValue); break;
-            case NUMBER: printf(" %f", arg->value.numValue); break;
+            case STRINGTYPE: printf(
+                " %s", 
+                arg->value.strValue
+            ); break;
+            case NUMBER: printf(
+                " %f", 
+                arg->value.numValue
+            ); break;
+            case BINOP: printf(
+                "%s",
+                getOperationString(arg->value.opValue)
+            ); break;
         }
-        puts("");
+        printf("\n");
     }
     printf("%li) END\n", i+1);
 }

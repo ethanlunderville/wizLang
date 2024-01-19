@@ -44,10 +44,8 @@ long getFileSize(FILE *file) {
 
 char* fileToBuffer(char * fileName) {
     FILE *file = fopen(fileName, "rb");
-    if (file == NULL) {
-        perror("A PROBLEM OCCURED WHEN OPENING SOURCE FILE");
-        exit(EXIT_FAILURE);
-    }
+    if (file == NULL) 
+        FATAL_ERROR( IO, -1, "Unable to open file: %s", fileName );
     long fileSize = getFileSize(file);
     char *buffer = (char *) malloc(fileSize + 1);
     programList = (struct TokenStruct *) malloc((sizeof(struct TokenStruct) * BASE_PROGRAM_LIST_SIZE));
@@ -58,7 +56,7 @@ char* fileToBuffer(char * fileName) {
 }
 
 int main () {
-    char* buffer = fileToBuffer("test.rs"); 
+    char* buffer = fileToBuffer("testddd.rs"); 
     setErrorFile(buffer);
 #ifdef OUTPUT_FILE
     printf("File content:\n%s\n\n", buffer);

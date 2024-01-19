@@ -89,6 +89,11 @@ struct wizObject ** declareSymbol(char * ident) {
     return &context->map[context->currentIndex-1].value;
 }
 
+void printIndent(int spaceNum) {
+    for (int j = 0 ; j < spaceNum ; j++) 
+        printf(" ");
+}
+
 // Prints all of the contexts for debugging
 
 void printContext() {
@@ -97,18 +102,28 @@ void printContext() {
     int count = 0;
     while (ref != NULL) {
         for (int i = 0 ; i < ref->currentIndex ; i++) {
-            for (int j = 0 ; j < count ; j++) 
-                printf(" ");
+            printIndent(count);
             printf("%s : ", ref->map[i].identifier);
             switch (ref->map[i].value->type) 
             {
-            case STRINGTYPE: printf("%s :: ",ref->map[i].value->value.strValue); break;
-            case NUMBER: printf("%f :: ",ref->map[i].value->value.numValue); break;
-            case CHARADDRESS: printf("%c :: ",*(ref->map[i].value->value.strValue)); break;
+            case STRINGTYPE: printf(
+                "%s :: ",
+                ref->map[i].value->value.strValue
+            ); break;
+            case NUMBER: printf(
+                "%f :: ",
+                ref->map[i].value->value.numValue
+            ); break;
+            case CHARADDRESS: printf(
+                "%c :: ",
+                *(ref->map[i].value->value.strValue)
+            ); break;
             }
-            printf("refCount : %i\n", ref->map[i].value->referenceCount);
-            for (int j = 0 ; j < count ; j++) 
-                printf(" ");
+            printf(
+                "RefCount : %i\n", 
+                ref->map[i].value->referenceCount
+            );
+            printIndent(count);
             puts("-------------------------");
         }
         ref = ref->cPtr;

@@ -75,7 +75,10 @@ int printCounterStack(struct lineCounterStack* counterStack) {
     puts("|---------Dump-----------|");
     int i = counterStack->stackSize - 1;
     for (; i > -1; i--)
-        printf("%li\n------------------------\n", counterStack->stack[i]);
+        printf(
+            "%li\n------------------------\n", 
+            counterStack->stack[i]
+        );
     return i;
 }   
 
