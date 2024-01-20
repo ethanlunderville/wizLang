@@ -40,7 +40,7 @@ void FATAL_ERROR(enum ErrorType err, long line, const char* format, ...) {
     va_list args;
     va_start(args, format);
     while (*format != '\0') {
-        if (*format != '%') {
+        if (*format != '%' && *format != '\n') {
             putchar(*format);
             format++;
             continue;

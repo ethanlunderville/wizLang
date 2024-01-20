@@ -427,6 +427,14 @@ void * popClean() {
     cleanWizObject(pop());
 }
 
+void * unaryFlip() {
+    struct wizObject * wizOb = pop();
+    if (wizOb->type != NUMBER)
+        FATAL_ERROR(RUNTIME, fetchCurrentLine(), "Attempted to negate non-numeric value");
+    wizOb->value.numValue = -(wizOb->value.numValue);
+    pushInternal(wizOb);
+}
+
 void initNullV() {
     nullV.referenceCount = -1;
     nullV.type = NUMBER;

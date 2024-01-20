@@ -1,3 +1,6 @@
-if 1:
-    x = 1
-print(x)
+
+t=0
+while t < 10:
+    f = 44
+    t += 1
+print(f)

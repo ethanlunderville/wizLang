@@ -105,6 +105,7 @@ char * opCodeStringMap (ByteCodeFunctionPtr fP) {
     else if (fP == &call) return "CALL";
     else if (fP == &targetOffset) return "PUSHOFFSET";
     else if (fP == &popClean) return "POPCLEAN";
+    else if (fP == &unaryFlip) return "FLIPSIGN";
     else return 0x0;
 }
 
@@ -224,6 +225,13 @@ void codeGenWalker(struct AST * aTree) {
             programAdder(aTree, push, value, STRINGTYPE);
             break;
             }
+        case UNARY:
+            {
+            for (int i = 0 ; i < aTree->childCount ; i++)
+                codeGenWalker(aTree->children[i]);
+            programAdder(aTree, unaryFlip , nullVal,-1);
+            break;
+            }
         case BINOP:
             {
             int i = 0;
@@ -272,6 +280,21 @@ void codeGenWalker(struct AST * aTree) {
             value.numValue = 0;
             long op = programAdder(aTree, jumpNe, value,NUMBER);
             codeGenWalker(aTree->children[1]);
+            value.numValue = (double) programCounterSave;
+            long jmp = programAdder(aTree, jump, value, NUMBER);
+            fetchArg(op)->value.numValue = programSize+1;
+            break;
+            }
+        case FOR:    
+            {
+            codeGenWalker(aTree->children[0]);
+            long programCounterSave = programSize+1;
+            assert(aTree->childCount == 3);
+            codeGenWalker(aTree->children[1]);
+            union TypeStore value;
+            value.numValue = 0;
+            long op = programAdder(aTree, jumpNe, value,NUMBER);
+            codeGenWalker(aTree->children[2]);
             value.numValue = (double) programCounterSave;
             long jmp = programAdder(aTree, jump, value, NUMBER);
             fetchArg(op)->value.numValue = programSize+1;

@@ -1,24 +1,21 @@
-x = "thisnis a test"
-f = '\t'
-echo('{'+f + 'n' + "}")
+//t
 
-/*
-size = 14
-i = 0
-while (i < size) {i++ }
-echo(x)
-*/
+//gg
+e = 88
+echo(!e)
 
-/*
-def fib(n) {
-    if (n == 0) {
+//echo(1!2)
+
+echo(!(1*2^3-3-4^(1/7)*7/9))
+/*def fib(n)
+    if (n == 0) 
         return 0
-    } else if (n == 1) {
+    else if (n == 1)
         return 1
-    } else {
+    else 
         return fib(n - 2) + fib(n - 1)
-    }
-}
 
 echo(fib(10))
+for (i = 0 ; i < 10 ; i++)
+    echo(1)
 */

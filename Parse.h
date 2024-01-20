@@ -18,6 +18,13 @@
 #define AST_STACKCAP 50
 #define BASE_PROGRAM_LIST_SIZE 10000
 
+//Stack to aid sExpression.
+
+struct ASTStack {
+    long size;
+    struct AST * stack[AST_STACKCAP];
+};
+
 char* createSingleCharacterLexeme(char c);
 char* createNumberLexeme(long * bufferIndex, char * buffer);
 char* createStringLexeme(long * bufferIndex, char * buffer, long lineNo);
@@ -38,6 +45,9 @@ void expect(enum Tokens token);
 
 struct AST* sSubScriptTree();
 struct AST* sReturn();
+struct AST* sNewLineBlock();
+struct AST* sOperand(struct ASTStack * operandStack);
+int sOperator(struct AST * exprTree, struct ASTStack * operandStack, struct ASTStack * operatorStack);
 struct AST* sBlock();
 struct AST* sAtomicExpr();
 //struct AST* sExpression();

@@ -57,11 +57,13 @@ enum Tokens {
     /*END OPERANDS*/
     ENDOPERANDS,
     COMMA,
+    SEMICOLON,
     ENDLINE,
 
     IF,
     ELSE,
     WHILE,
+    FOR,
 
     OPENBRACE,
     CLOSEBRACE,
@@ -75,9 +77,9 @@ enum Tokens {
     ENDOFFILE
 };
 
-#define KEYWORD_LISTSIZE 5
+#define KEYWORD_LISTSIZE 6
 static char* keywords[KEYWORD_LISTSIZE] = {
-    "if", "else", "while", "def", "return"
+    "if", "else", "while", "def", "return", "for"
 };
 
 const char* getTokenName(enum Tokens token);
@@ -88,6 +90,7 @@ enum Types {
     STRINGTYPE,
     BINOP,
     OP,
+    UNARY,
     EXPRESSION,
     EXPRESSION_NOASSIGN,
     //Chars are handled uniquely to prevent the need to make a wizobject for every char

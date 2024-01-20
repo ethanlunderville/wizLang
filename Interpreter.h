@@ -69,6 +69,7 @@ void* call();
 void* fAssign();
 void* push();
 void* binOpCode();
+void* unaryFlip();
 void* jump();
 void* jumpNe();
 void* pushLookup();

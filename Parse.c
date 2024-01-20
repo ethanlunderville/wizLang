@@ -47,6 +47,7 @@ enum Tokens getKeywordFromString(char * str) {
     if (strcmp(str, "else") == 0) return ELSE;
     if (strcmp(str, "def") == 0) return DEF;
     if (strcmp(str, "return") == 0) return RETURN;
+    if (strcmp(str, "for") == 0) return FOR;
     return -1;
 }
 
@@ -91,6 +92,8 @@ const char* getTokenName(enum Tokens token) {
         case IF: return "IF";
         case WHILE: return "WHILE";
         case ENDOFFILE: return "ENDOFFILE";
+        case FOR: return "FOR";
+        case SEMICOLON: return "SEMICOLON";
         default: return "Token not found";
     }
 }
@@ -185,7 +188,7 @@ char * createAlphaLexeme(long * bufferIndex, char * buffer) {
     are stored in the program list for the parser.
 
 */
-
+void breaker() {}
 void lex(char* buffer, struct TokenStruct * programList) {
     long lineNo = 1;
     long buffSize = strlen(buffer);
@@ -203,6 +206,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
         case '[': addToProgramList("[", NONE, lineNo ,OPENBRACKET); break;
         case ']': addToProgramList("]", NONE, lineNo ,CLOSEBRACKET); break;
         case '-': addToProgramList("-", BINOP, lineNo ,SUBTRACT); break;
+        case ';': addToProgramList(";", NONE, lineNo ,SEMICOLON); break;
         case '\n': {
             addToProgramList("\n", NONE, lineNo ,ENDLINE); 
             lineNo++; 
@@ -224,11 +228,10 @@ void lex(char* buffer, struct TokenStruct * programList) {
             break;
         }
         case '/': {
+            breaker();
             if (checkNext(buffer,i,'/')) {
-                while (buffer[i]!='\n' && i < buffSize) 
+                while ((!checkNext(buffer,i,'\n')) && i < buffSize) 
                     i++;
-                lineNo++;
-                i++;
             } else if (checkNext(buffer,i,'*')) {
                 while (!(buffer[i]=='*' && checkNext(buffer,i,'/')) && i < buffSize){
                     if (buffer[i] == '\n')
@@ -263,9 +266,9 @@ void lex(char* buffer, struct TokenStruct * programList) {
             if (checkNext(buffer,i,'=')) {
                 i++;
                 addToProgramList("!=",BINOP,lineNo,NOTEQUAL);
-            }
-            else { 
-                FATAL_ERROR(PARSE, lineNo, "Expected = after !");
+            } else {
+                addToProgramList("!", BINOP, lineNo ,SUBTRACT); 
+            //    FATAL_ERROR(PARSE, lineNo, "Expected = after !");
             }
             break;
         }
@@ -469,9 +472,32 @@ struct AST* sReturn() {
     return reTree;
 }
 
+struct AST* sNewLineBlock() {
+    struct AST * bTree = initAST(getCurrentTokenStruct());
+    if (isCurrentToken(ENDLINE))
+        scan();
+    bTree->token->token = OPENBRACE;
+    while (!isCurrentToken(ENDLINE) && !isCurrentToken(ENDOFFILE)) {
+        if (onExpressionToken())
+            addChild(bTree, sExpression(&exprNoAssign));
+        else if (onConditionalToken())
+            addChild(bTree, sConditional());
+        else if (isCurrentToken(RETURN))
+            addChild(bTree, sReturn());
+        else if (getCurrentTokenStruct()->token == ENDLINE)
+            scan();
+    }
+    if ((!isCurrentToken(ENDLINE)) && (!isCurrentToken(ENDOFFILE)))
+        expect(ENDLINE);
+    scan();
+    return bTree;
+}
+
 // Parses { }
 
 struct AST* sBlock() {
+    if (!isCurrentToken(OPENBRACE))
+        return sNewLineBlock();
     struct AST * bTree = initAST(getCurrentTokenStruct());
     expect(OPENBRACE);
     while (!isCurrentToken(CLOSEBRACE)) {
@@ -518,6 +544,27 @@ struct AST* sConditional() {
             addChild(condTree, sExpression(&expr));
             expect(RIGHTPARENTH);
             addChild(condTree, sBlock());
+            break;
+            }
+        case FOR:
+            {
+            struct AST * initExpr;
+            struct AST * condExpr;
+            struct AST * iterExpr;
+            struct AST * block;
+            scan();
+            expect(LEFTPARENTH);
+            initExpr = sExpression(&expr);
+            expect(SEMICOLON);
+            condExpr = sExpression(&expr);
+            expect(SEMICOLON);
+            iterExpr = sExpression(&expr);
+            expect(RIGHTPARENTH);
+            block = sBlock();
+            addChild(condTree, initExpr);
+            addChild(condTree, condExpr);
+            addChild(condTree, block);
+            addChild(block, iterExpr);
             break;
             }
         default: 
@@ -668,8 +715,13 @@ bool onData() {
 bool onConditionalToken() {
     if ( isCurrentToken(IF)
        ||isCurrentToken(WHILE)
+       ||isCurrentToken(FOR)
     ) return true;
     return false;
+}
+
+bool onUnary() {
+    return isCurrentToken(SUBTRACT);
 }
 
 // Parser ulility
@@ -681,6 +733,7 @@ bool onExpressionBreaker() {
        ||isCurrentToken(COMMA)
        ||isCurrentToken(CLOSEBRACKET)
        ||isCurrentToken(CLOSEBRACE)
+       ||isCurrentToken(SEMICOLON)
     ) return true;
     return false;
 }
@@ -702,13 +755,6 @@ void expect(enum Tokens token) {
 ////////////////////////////////////////////////////////////////
 // CODE FOR EXPRESSION EVALUATION
 ////////////////////////////////////////////////////////////////
-
-//Stack to aid sExpression.
-
-struct ASTStack {
-    long size;
-    struct AST * stack[AST_STACKCAP];
-};
 
 // Function for the stacks in sExpression.
 
@@ -795,6 +841,60 @@ void createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(
 }
 
 
+struct AST* sOperand(struct ASTStack * operandStack) {
+#ifdef OUTPUT_EXPRESSIONS 
+    printf("%s ", getCurrentTokenStruct()->lexeme);
+#endif
+    struct AST* pushTree;
+    if (!onOperandToken() && !onUnary())    
+        FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
+    if (onUnary()) {
+        pushTree = initAST(getCurrentTokenStruct());
+        pushTree->token->type = UNARY;
+        scan();
+        push(operandStack, pushTree);
+        addChild(pushTree, sOperand(operandStack));
+        return pushTree;
+    } else if (isCurrentToken(IDENTIFIER)) {
+        pushTree = sIdentTree();
+    } else if (isCurrentToken(LEFTPARENTH)){
+        scan();
+        pushTree = sExpression(&expr);
+        expect(RIGHTPARENTH);
+    } else if (onData()) {
+        pushTree = initAST(getCurrentTokenStruct());
+        scan();
+    } else if (onExpressionBreaker()) { 
+        return NULL;
+    }
+    if (operandStack->size != 0)
+        if (peek(operandStack)->token->type == UNARY)
+            return pushTree;
+    push(operandStack, pushTree);
+    return pushTree;
+}
+
+int sOperator(struct AST * exprTree, struct ASTStack * operandStack, struct ASTStack * operatorStack) {
+#ifdef OUTPUT_EXPRESSIONS 
+    printf("%s ", getCurrentTokenStruct()->lexeme);
+#endif
+    if (onOperatorToken()) {
+        if (isCurrentToken(ASSIGNMENT))
+            exprTree->token = &expr;
+        struct AST* opTree = initAST(getCurrentTokenStruct());
+        //WHILE THE TOP OPERATOR ON THE TOP OF THE STACK HAS HIGHER PRECEDENCE THAN THE CURRENT OPERATOR
+        while (operatorStack->size != 0 
+        && getOperatorPrecedenceFromASTNode(peek(operatorStack)) > getOperatorPrecedenceFromASTNode(opTree)) 
+            createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(operandStack, operatorStack);
+        push(operatorStack, opTree);
+        scan();
+    } else if (onExpressionBreaker()){
+        return 0;
+    } else {
+        FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
+    } 
+    return 1;
+}
 
 // Main algorithm for parsing expressions. Similar to shunting yard.
 
@@ -805,41 +905,10 @@ struct AST * sExpression(struct TokenStruct * exprType) {
     struct ASTStack operandStack;
     operandStack.size = 0;
     while (1) {
-#ifdef OUTPUT_EXPRESSIONS 
-        printf("%s ", getCurrentTokenStruct()->lexeme);
-#endif
-        if (!onOperandToken())
-            FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
-        if (isCurrentToken(IDENTIFIER)) {
-            push(&operandStack, sIdentTree());
-        } else if (isCurrentToken(LEFTPARENTH)){
-            scan();
-            push(&operandStack, sExpression(&expr));
-            expect(RIGHTPARENTH);
-        } else if (onData()) {
-            push(&operandStack, initAST(getCurrentTokenStruct()));
-            scan();
-        } else if (onExpressionBreaker()) { 
+        if (sOperand(&operandStack) == NULL)
             break;
-        }
-#ifdef OUTPUT_EXPRESSIONS 
-        printf("%s ", getCurrentTokenStruct()->lexeme);
-#endif
-        if (onOperatorToken()) {
-            if (isCurrentToken(ASSIGNMENT))
-                exprTree->token = &expr;
-            struct AST* opTree = initAST(getCurrentTokenStruct());
-            //WHILE THE TOP OPERATOR ON THE TOP OF THE STACK HAS HIGHER PRECEDENCE THAN THE CURRENT OPERATOR
-            while (operatorStack.size != 0 
-            && getOperatorPrecedenceFromASTNode(peek(&operatorStack)) > getOperatorPrecedenceFromASTNode(opTree)) 
-                createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(&operandStack, &operatorStack);
-            push(&operatorStack, opTree);
-            scan();
-        } else if (onExpressionBreaker()){
+        if (sOperator(exprTree, &operandStack, &operatorStack) == 0)
             break;
-        } else {
-            FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
-        }   
     }
     if (operandStack.size < 1) 
         FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
