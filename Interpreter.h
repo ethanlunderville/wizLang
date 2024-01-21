@@ -29,6 +29,7 @@ typedef void* (*ByteCodeFunctionPtr)();
 union TypeStore {
     double numValue;
     char* strValue;
+    struct wizObject** listVal;
     enum Tokens opValue;
 };
 
@@ -74,6 +75,7 @@ void* jump();
 void* jumpNe();
 void* pushLookup();
 void* popClean();
+void* buildList();
 
 int dumpStack();
 void interpret();

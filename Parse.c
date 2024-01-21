@@ -577,6 +577,34 @@ struct AST* sConditional() {
     return condTree;
 } 
 
+struct AST* sComplexType() {
+    struct AST * complexTypeAST = initAST(getCurrentTokenStruct());
+    switch (getCurrentTokenStruct()->token) {
+        case OPENBRACE: 
+            {
+            break;
+            }
+        case OPENBRACKET:
+            {
+            complexTypeAST->token->type = LIST;
+            scan();
+            while (!isCurrentToken(CLOSEBRACKET)) {
+                addChild(complexTypeAST, sExpression(&expr));
+                if (!isCurrentToken(CLOSEBRACKET)) {
+                    expect(COMMA);
+                    continue;
+                }
+            }
+            expect(CLOSEBRACKET);
+            break;
+            }
+        default: FATAL_ERROR(
+            LANGUAGE, getCurrentLine(), "Expected a Brace or Bracket"
+        );
+    }
+    return complexTypeAST;
+}
+
 struct AST* sFunctionDeclaration() {
     struct AST* defTree = initAST(getCurrentTokenStruct());
     expect(DEF);
@@ -667,6 +695,10 @@ bool onFunctionDeclaration() {
     return isCurrentToken(DEF);
 }
 
+bool onComplexType() {
+    return (isCurrentToken(OPENBRACKET) || isCurrentToken(OPENBRACE));
+}
+
 // Parser utility
 
 bool onExpressionToken() {
@@ -692,7 +724,7 @@ bool onOperandToken() {
     if (programList[currentProgramListCounter].token < ENDOPERANDS 
      && programList[currentProgramListCounter].token > BEGINOPERANDS)
         return true;
-    return false;
+    return onComplexType();
 }
 
 // Parser utility
@@ -862,6 +894,8 @@ struct AST* sOperand(struct ASTStack * operandStack, int parseUn) {
         scan();
         pushTree = sExpression(&expr);
         expect(RIGHTPARENTH);
+    } else if (onComplexType()) {
+        pushTree = sComplexType();
     } else if (onData()) {
         pushTree = initAST(getCurrentTokenStruct());
         scan();

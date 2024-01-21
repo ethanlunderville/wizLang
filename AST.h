@@ -16,7 +16,7 @@
 // Base number of child pointers allocated in AST node.
 #define BASECHILDNUMBER 4
 // Indentation spaces when printing the AST.
-#define TREEINDENT 2 
+#define TREEINDENT 2
 
 struct AST {
     struct AST** children;

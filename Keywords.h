@@ -95,6 +95,7 @@ enum Types {
     EXPRESSION_NOASSIGN,
     //Chars are handled uniquely to prevent the need to make a wizobject for every char
     CHARADDRESS, 
+    LIST,
     CHAR,
     NONE
 };

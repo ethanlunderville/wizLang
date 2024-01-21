@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include "Builtins.h"
 #include "Interpreter.h"
+#include "DataStructures.h"
 
 extern struct wizObject* stack;
 extern struct wizObject nullV;
@@ -26,14 +27,32 @@ BuiltInFunctionPtr getBuiltin(char * funcName) {
     return 0;
 }
 
-void* fEcho() {
+void* fEchoH() {
     struct wizObject* val = pop();
     switch (val->type) 
     {
-    case NUMBER: printf("%f\n",val->value.numValue); break;
-    case STRINGTYPE: printf("%s\n",val->value.strValue); break;
-    case CHARADDRESS: printf("%c\n",*(val->value.strValue)); break;
+    case NUMBER: printf("%f",val->value.numValue); break;
+    case STRINGTYPE: printf("%s",val->value.strValue); break;
+    case CHARADDRESS: printf("%c",*(val->value.strValue)); break;
+    case LIST: 
+    {
+    int size = ((struct wizList*)val)->size;
+    printf("[");
+    for (int i = 0 ; i < size; i++) {
+        pushInternal(val->value.listVal[i]);
+        fEchoH();
+        if (i != size - 1)
+            printf(", ");
+    }
+    printf("]");
+    break;
+    }
     }
     cleanWizObject(val);
     pushInternal(&nullV);
+}
+
+void* fEcho() {
+    fEchoH();
+    printf("\n");
 }

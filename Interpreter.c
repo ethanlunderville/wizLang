@@ -23,6 +23,7 @@
 #include "Builtins.h"
 #include "Switchboard.h"
 #include "Error.h"
+#include "DataStructures.h"
 
 // These two are defined in Codegen.c
 extern long programSize; 
@@ -59,6 +60,15 @@ void cleanWizObject(struct wizObject* wiz) {
         return;
     if (wiz->type == STRINGTYPE)
         free(wiz->value.strValue);
+    else if (wiz->type == LIST){
+        struct wizList * list = (struct wizList*)wiz;
+        for (int i = 0 ; i < list->size ; i++) {
+            wiz->value.listVal[0]->referenceCount--;
+            cleanWizObject(wiz->value.listVal[0]);
+        }
+        free(list);
+        return;
+    }
     free(wiz);
 }
 
@@ -425,6 +435,14 @@ void * fReturnNoArg() {
 
 void * popClean() {
     cleanWizObject(pop());
+}
+
+void * buildList() {
+    int elementCount = (int)fetchArg(instructionIndex)->value.numValue;
+    struct wizList * list = initList(elementCount);
+    for (int i = 0 ; i < elementCount; i++)
+        appendToWizList(list, pop());
+    pushInternal((struct wizObject*)list);
 }
 
 void * unaryFlip() {

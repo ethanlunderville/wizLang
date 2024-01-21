@@ -15,6 +15,8 @@
 #include "AST.h"
 
 int indentationCount = 0; // For printing tree
+extern struct TokenStruct exprNoAssign;
+extern struct TokenStruct expr;
 
 /*
 
@@ -31,7 +33,7 @@ void printAST(struct AST* ast){
         printf(" ");
     if (ast->token == NULL) 
         puts("<NOINFO>");
-    else 
+    else
         printf("%s : %p\n",ast->token->lexeme, ast);
     for (int i = 0 ; i < ast->childCount ; i++) {
         indentationCount += TREEINDENT;

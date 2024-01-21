@@ -19,6 +19,7 @@
 #include "AST.h"
 #include "Mem.h"
 #include "Error.h"
+#include "DataStructures.h"
 
 /*
 
@@ -35,21 +36,6 @@
 long programSize = 0;
 long programCapacity = 0;
 struct opCode * program;
-
-/*
-
-    All wizObjects are also stored in a continuos
-    block of memory. This is for cpu caching
-    optimization. Similar to the program list from
-    above, wizSlabSize and wizSlabCapacity represent
-    the current size and capacity of the wizSlab
-    array.
-
-*/
-
-long wizSlabSize = 0;
-long wizSlabCapacity = 0;
-struct wizObject * wizSlab;
 
 // Global context to declare functions
 extern struct Context* context;
@@ -106,6 +92,7 @@ char * opCodeStringMap (ByteCodeFunctionPtr fP) {
     else if (fP == &targetOffset) return "PUSHOFFSET";
     else if (fP == &popClean) return "POPCLEAN";
     else if (fP == &unaryFlip) return "FLIPSIGN";
+    else if (fP == &buildList) return "BUILDLIST";
     else return 0x0;
 }
 
@@ -205,6 +192,15 @@ void codeGenWalker(struct AST * aTree) {
             if (aTree->token->type == EXPRESSION_NOASSIGN)
                 programAdder(aTree, popClean, nullVal, -1);
             break;
+            }
+        case LIST: 
+            {
+            for (int i = aTree->childCount - 1 ; i > -1 ; i--)
+                codeGenWalker(aTree->children[i]);
+            union TypeStore value;
+            value.numValue = (double)aTree->childCount;
+            programAdder(aTree, buildList, value, NUMBER);
+            return;
             }
         case CHARADDRESS: 
             {
@@ -364,8 +360,6 @@ void codeGenWalker(struct AST * aTree) {
             value.strValue = funcAST->token->lexeme;
             programAdder(funcAST, call, value, STRINGTYPE);
             break;
-            
-            puts("");
             }
         case FUNCTIONCALLIDENT:
             {
