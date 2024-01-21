@@ -46,7 +46,7 @@ void expect(enum Tokens token);
 struct AST* sSubScriptTree();
 struct AST* sReturn();
 struct AST* sNewLineBlock();
-struct AST* sOperand(struct ASTStack * operandStack);
+struct AST* sOperand(struct ASTStack * operandStack, int parseUn);
 int sOperator(struct AST * exprTree, struct ASTStack * operandStack, struct ASTStack * operatorStack);
 struct AST* sBlock();
 struct AST* sAtomicExpr();

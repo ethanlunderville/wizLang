@@ -94,6 +94,7 @@ const char* getTokenName(enum Tokens token) {
         case ENDOFFILE: return "ENDOFFILE";
         case FOR: return "FOR";
         case SEMICOLON: return "SEMICOLON";
+        case DOTOP: return "DOTOP";
         default: return "Token not found";
     }
 }
@@ -188,7 +189,7 @@ char * createAlphaLexeme(long * bufferIndex, char * buffer) {
     are stored in the program list for the parser.
 
 */
-void breaker() {}
+
 void lex(char* buffer, struct TokenStruct * programList) {
     long lineNo = 1;
     long buffSize = strlen(buffer);
@@ -207,6 +208,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
         case ']': addToProgramList("]", NONE, lineNo ,CLOSEBRACKET); break;
         case '-': addToProgramList("-", BINOP, lineNo ,SUBTRACT); break;
         case ';': addToProgramList(";", NONE, lineNo ,SEMICOLON); break;
+        case '.': addToProgramList(".", NONE, lineNo ,DOTOP); break;
         case '\n': {
             addToProgramList("\n", NONE, lineNo ,ENDLINE); 
             lineNo++; 
@@ -228,7 +230,6 @@ void lex(char* buffer, struct TokenStruct * programList) {
             break;
         }
         case '/': {
-            breaker();
             if (checkNext(buffer,i,'/')) {
                 while ((!checkNext(buffer,i,'\n')) && i < buffSize) 
                     i++;
@@ -443,7 +444,7 @@ struct AST* sIdentTree() {
             {
             identTree->token->token = FUNCTIONCALLIDENT;
             scan();
-            while (!isCurrentToken(RIGHTPARENTH)){
+            while (!isCurrentToken(RIGHTPARENTH)) {
                 addChild(identTree, sExpression(&expr));        
                 if (!isCurrentToken(RIGHTPARENTH)) 
                     expect(COMMA);
@@ -521,6 +522,7 @@ struct AST* sConditional() {
     switch (getCurrentTokenStruct()->token) {
         case IF:
             {
+            struct AST* elseTree;
             scan();
             expect(LEFTPARENTH);
             addChild(condTree, sExpression(&expr));
@@ -528,7 +530,7 @@ struct AST* sConditional() {
             addChild(condTree, sBlock());
             if (!isCurrentToken(ELSE)) 
                 break;
-            struct AST* elseTree = initAST(getCurrentTokenStruct());
+            elseTree = initAST(getCurrentTokenStruct());
             scan();
             if (isCurrentToken(IF)) 
                 addChild(elseTree, sConditional());    
@@ -568,13 +570,9 @@ struct AST* sConditional() {
             break;
             }
         default: 
-            {
             FATAL_ERROR(
-                PARSE,
-                getCurrentLine(),
-                "Unrecognized Conditional"
+                PARSE, getCurrentLine(), "Unrecognized Conditional"
             );
-            }
     }
     return condTree;
 } 
@@ -745,7 +743,7 @@ void expect(enum Tokens token) {
         FATAL_ERROR(
             PARSE,
             getCurrentTokenStruct()->line,
-            "EXPECTED: %s, GOT: %s\n", 
+            "EXPECTED: %s, GOT: %s", 
             getTokenName(token), 
             getTokenName(programList[currentProgramListCounter].token) 
         );     
@@ -840,20 +838,23 @@ void createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(
     push(operandStack, operatorHold);
 }
 
-
-struct AST* sOperand(struct ASTStack * operandStack) {
+struct AST* sOperand(struct ASTStack * operandStack, int parseUn) {
 #ifdef OUTPUT_EXPRESSIONS 
     printf("%s ", getCurrentTokenStruct()->lexeme);
 #endif
     struct AST* pushTree;
     if (!onOperandToken() && !onUnary())    
-        FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
+        FATAL_ERROR( PARSE, getCurrentLine(), "Malformed expression" );
     if (onUnary()) {
         pushTree = initAST(getCurrentTokenStruct());
         pushTree->token->type = UNARY;
         scan();
+        if (parseUn) {
+            addChild(pushTree, sOperand(operandStack, 1));
+            return pushTree;
+        }
         push(operandStack, pushTree);
-        addChild(pushTree, sOperand(operandStack));
+        addChild(pushTree, sOperand(operandStack, 1));
         return pushTree;
     } else if (isCurrentToken(IDENTIFIER)) {
         pushTree = sIdentTree();
@@ -867,9 +868,7 @@ struct AST* sOperand(struct ASTStack * operandStack) {
     } else if (onExpressionBreaker()) { 
         return NULL;
     }
-    if (operandStack->size != 0)
-        if (peek(operandStack)->token->type == UNARY)
-            return pushTree;
+    if (parseUn) return pushTree;
     push(operandStack, pushTree);
     return pushTree;
 }
@@ -901,11 +900,11 @@ int sOperator(struct AST * exprTree, struct ASTStack * operandStack, struct ASTS
 struct AST * sExpression(struct TokenStruct * exprType) {
     struct AST * exprTree = initAST(exprType);
     struct ASTStack operatorStack;
-    operatorStack.size = 0;
     struct ASTStack operandStack;
+    operatorStack.size = 0;
     operandStack.size = 0;
     while (1) {
-        if (sOperand(&operandStack) == NULL)
+        if (sOperand(&operandStack,0) == NULL)
             break;
         if (sOperator(exprTree, &operandStack, &operatorStack) == 0)
             break;
@@ -913,10 +912,11 @@ struct AST * sExpression(struct TokenStruct * exprType) {
     if (operandStack.size < 1) 
         FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
     while (operandStack.size != 1)
-        createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(&operandStack, &operatorStack);
+        createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(
+            &operandStack, &operatorStack
+        );
     addChild(exprTree,pop(&operandStack));
     return exprTree;
-
 }
 
 

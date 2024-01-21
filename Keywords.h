@@ -23,7 +23,6 @@
 enum Tokens {
     /*BEGIN OPERATORS*/
     BEGINOPERATORS,
-
     ASSIGNMENT,
     PIPE,
     EQUAL,
@@ -42,6 +41,7 @@ enum Tokens {
     DIVIDE,
     POWER,
     /*BEGIN OPERANDS*/
+    DOTOP,
     BEGINOPERANDS,
     LEFTPARENTH, 
     /*END OPERATORS*/

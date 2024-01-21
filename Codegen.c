@@ -187,6 +187,8 @@ struct opCode * codeGen(struct AST * aTree) {
 
 */
 
+void breaker() {}
+
 void codeGenWalker(struct AST * aTree) {
     if (aTree != NULL && aTree->token == NULL) {
         for (int i = 0 ; i < aTree->childCount ; i++)
@@ -234,6 +236,8 @@ void codeGenWalker(struct AST * aTree) {
             }
         case BINOP:
             {
+            if (aTree->token->token == DOTOP)
+                break;
             int i = 0;
             if (aTree->token->token == ASSIGNMENT && aTree->children[0]->token->token != INDEXIDENT) {
                 union TypeStore value;
@@ -346,6 +350,22 @@ void codeGenWalker(struct AST * aTree) {
             value.strValue = aTree->token->lexeme;
             programAdder(aTree, pushLookup, value, STRINGTYPE);
             break;
+            }
+        case DOTOP:
+            {
+            assert(aTree->childCount == 2);
+            struct AST* argAST = aTree->children[0];
+            struct AST* funcAST = aTree->children[1]; 
+            programAdder(aTree,createStackFrame, nullVal, -1);
+            codeGenWalker(argAST);
+            for (int i = 0 ; i < funcAST->childCount ; i++)
+                codeGenWalker(funcAST->children[i]);
+            union TypeStore value;
+            value.strValue = funcAST->token->lexeme;
+            programAdder(funcAST, call, value, STRINGTYPE);
+            break;
+            
+            puts("");
             }
         case FUNCTIONCALLIDENT:
             {
