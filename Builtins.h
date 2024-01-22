@@ -4,5 +4,5 @@
 typedef void* (*BuiltInFunctionPtr)();
 BuiltInFunctionPtr getBuiltin();
 void* fEcho();
-
+void* fSize();
 #endif

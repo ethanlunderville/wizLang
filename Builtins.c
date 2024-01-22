@@ -17,6 +17,7 @@
 #include "Builtins.h"
 #include "Interpreter.h"
 #include "DataStructures.h"
+#include <stdlib.h>
 
 extern struct wizObject* stack;
 extern struct wizObject nullV;
@@ -24,7 +25,17 @@ extern struct wizObject nullV;
 
 BuiltInFunctionPtr getBuiltin(char * funcName) {
     if (strcmp("echo", funcName)==0) return &fEcho;
+    if (strcmp("size", funcName)==0) return &fSize;
     return 0;
+}
+
+void* fSize() {
+    struct wizList* val = (struct wizList*)pop();
+    struct wizObject* wizOb = (struct wizObject*)malloc(sizeof(struct wizObject));
+    wizOb->type = NUMBER;
+    wizOb->value.numValue = ((double)val->size);
+    cleanWizObject((struct wizObject*)val);
+    pushInternal(wizOb);
 }
 
 void* fEchoH() {

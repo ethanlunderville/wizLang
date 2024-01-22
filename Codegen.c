@@ -63,10 +63,10 @@ long programAdder(struct AST* node, ByteCodeFunctionPtr op, union TypeStore val,
     }
     program[programSize].lineNumber = node->token->line;
     program[programSize].associatedOperation = op;
-    program[programSize].wizArg.value = val;
-    program[programSize].wizArg.type = type;
+    program[programSize].wizArg.wizArg.value = val;
+    program[programSize].wizArg.wizArg.type = type;
     // Static variables are ignored by the mem manager since they have a refCount of -1
-    program[programSize].wizArg.referenceCount = -1;
+    program[programSize].wizArg.wizArg.referenceCount = -1;
     programSize++;
     return programSize-1;
 }
@@ -215,7 +215,8 @@ void codeGenWalker(struct AST * aTree) {
             {
             union TypeStore value;
             value.strValue = aTree->token->lexeme;
-            programAdder(aTree, push, value, STRINGTYPE);
+            ((struct wizList*)fetchArg(programAdder(aTree, push, value, STRINGTYPE)))->size = strlen(value.strValue);
+            ((struct wizList*)fetchArg(programAdder(aTree, push, value, STRINGTYPE)))->capacity = strlen(value.strValue);
             break;
             }
         case UNARY:

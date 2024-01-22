@@ -53,8 +53,8 @@ union wizUnion {
 
 struct opCode {
     long lineNumber;
-    struct wizObject wizArg;
-    //union wizUnion wizArg;
+    //struct wizObject wizArg;
+    union wizUnion wizArg;
     ByteCodeFunctionPtr associatedOperation;
 };
 

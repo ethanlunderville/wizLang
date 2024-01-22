@@ -373,12 +373,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
 
 // Adds a token to the list that the lexer outputs for the parser.
 
-void addToProgramList(
-    char * lexeme,
-    enum Types type, 
-    long lineNo,
-    enum Tokens token
-) {
+void addToProgramList(char * lexeme, enum Types type, long lineNo, enum Tokens token) {
     if (programListSize == programListCapacity - 1) {
         programListCapacity *= 2;
         programList = realloc(programList, programListCapacity);
@@ -437,7 +432,7 @@ void freeProgramList(struct TokenStruct * programList, long size) {
 struct AST* sSubScriptTree() {
     struct AST* sTree = initAST(getCurrentTokenStruct());
     expect(OPENBRACKET);
-    addChild(sTree, sExpression(&exprNoAssign));
+    addChild(sTree, sExpression(&expr));
     expect(CLOSEBRACKET);
     if (isCurrentToken(OPENBRACKET))
         addChild(sTree, sSubScriptTree());

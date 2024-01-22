@@ -76,7 +76,7 @@ long fetchCurrentLine() {
 }
 
 struct wizObject * fetchArg (long opCodeIndex) {
-    return &program[opCodeIndex].wizArg;
+    return &program[opCodeIndex].wizArg.wizArg;
 }
 
 
@@ -328,6 +328,8 @@ void* targetOffset() {
             (continuosDataWiz->value.strValue[(int)offsetWiz->value.numValue])
         );
         pushInternal(characterObj);
+    } else if (continuosDataWiz->type == LIST) {
+        pushInternal(((struct wizObject*)continuosDataWiz)->value.listVal[(int)offsetWiz->value.numValue]);
     }
     cleanWizObject(offsetWiz);
     cleanWizObject(continuosDataWiz);
