@@ -20,6 +20,7 @@
 
 struct TokenStruct;
 struct AST;
+struct wizList;
 
 enum Types;
 enum Tokens;
@@ -39,9 +40,21 @@ struct wizObject {
     union TypeStore value;  
 };
 
+struct wizList {
+    struct wizObject wizV;
+    int size;
+    int capacity;
+};
+
+union wizUnion {
+    struct wizObject wizArg;
+    struct wizList wizList;
+};
+
 struct opCode {
     long lineNumber;
     struct wizObject wizArg;
+    //union wizUnion wizArg;
     ByteCodeFunctionPtr associatedOperation;
 };
 
@@ -76,6 +89,9 @@ void* jumpNe();
 void* pushLookup();
 void* popClean();
 void* buildList();
+
+void decRef(struct wizObject * obj);
+void incRef(struct wizObject * obj);
 
 int dumpStack();
 void interpret();

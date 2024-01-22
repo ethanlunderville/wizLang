@@ -52,12 +52,7 @@ extern struct TokenStruct expr;
 
 // Constructor for the opCode that ensures it will be correctly laid out in memory
 
-long programAdder(
-    struct AST* node, 
-    ByteCodeFunctionPtr op, 
-    union TypeStore val, 
-    enum Types type
-) {
+long programAdder(struct AST* node, ByteCodeFunctionPtr op, union TypeStore val, enum Types type) {
     if (programSize == 0) {
         program = INIT_ARRAY(struct opCode);
         programCapacity = BASE_CAPACITY;
@@ -235,7 +230,8 @@ void codeGenWalker(struct AST * aTree) {
             if (aTree->token->token == DOTOP)
                 break;
             int i = 0;
-            if (aTree->token->token == ASSIGNMENT && aTree->children[0]->token->token != INDEXIDENT) {
+            if (aTree->token->token == ASSIGNMENT 
+            && aTree->children[0]->token->token != INDEXIDENT) {
                 union TypeStore value;
                 value.strValue = aTree->children[0]->token->lexeme;
                 programAdder(aTree, push, value, IDENTIFIER);

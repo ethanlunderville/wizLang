@@ -46,6 +46,7 @@ struct Context* context;
 // Pseudo Null
 struct wizObject nullV;
 
+
 /*
 
     This is to fetch args from the flattened list of
@@ -62,10 +63,8 @@ void cleanWizObject(struct wizObject* wiz) {
         free(wiz->value.strValue);
     else if (wiz->type == LIST){
         struct wizList * list = (struct wizList*)wiz;
-        for (int i = 0 ; i < list->size ; i++) {
-            wiz->value.listVal[0]->referenceCount--;
-            cleanWizObject(wiz->value.listVal[0]);
-        }
+        for (int i = 0 ; i < list->size ; i++)
+            decRef(wiz->value.listVal[0]);
         free(list);
         return;
     }
@@ -280,32 +279,19 @@ void* binOpCode() {
             {
             struct wizObject * temp = pop();
             struct wizObject * ident = pop();
+            struct wizObject ** ref;
             if (ident->type == CHARADDRESS) {
                 ident->value.strValue[0] = *(temp->value.strValue);
                 cleanWizObject(temp);
                 cleanWizObject(ident);
                 break;
             }
-            assert(ident->type == IDENTIFIER);
-            struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
+            ref = getObjectRefFromIdentifier(ident->value.strValue);
             if (ref == NULL)
-                 ref = declareSymbol(ident->value.strValue);
-            else if ((*ref)->referenceCount != -1) {
-                // Reduce the referenceCount of the currently pointed to 
-                // wizObject and potentially clean it if it exists.
-                (*ref)->referenceCount--;
-                cleanWizObject(*ref);
-            }
-            /*
-
-                if the refCount is negative -1 it means that it is
-                an opCode argument (Not freeable until program
-                terminates) other wise it is incrmented since an
-                identifier now points to it
-
-            */
-            if (temp->referenceCount != -1)
-                temp->referenceCount++;
+                ref = declareSymbol(ident->value.strValue);
+            else
+                decRef(*ref);
+            incRef(temp);
             *ref = temp;
             cleanWizObject(temp);
             cleanWizObject(ident);
@@ -338,7 +324,9 @@ void* targetOffset() {
         struct wizObject* characterObj = (struct wizObject*)malloc(sizeof(struct wizObject));
         characterObj->referenceCount = 0;
         characterObj->type = CHARADDRESS;
-        characterObj->value.strValue = &((continuosDataWiz->value.strValue[(int)offsetWiz->value.numValue]));
+        characterObj->value.strValue = &(
+            (continuosDataWiz->value.strValue[(int)offsetWiz->value.numValue])
+        );
         pushInternal(characterObj);
     }
     cleanWizObject(offsetWiz);
@@ -348,6 +336,7 @@ void* targetOffset() {
 void * fAssign() {
     struct wizObject * ident = pop();
     struct wizObject * temp = pop();
+    struct wizObject ** ref;
     if (ident->type == CHARADDRESS) {
         ident->value.strValue[0] = *(temp->value.strValue);
         cleanWizObject(temp);
@@ -355,25 +344,12 @@ void * fAssign() {
         return NULL;
     }
     assert(ident->type == STRINGTYPE);
-    struct wizObject ** ref = getObjectRefFromIdentifier(ident->value.strValue);
+    ref = getObjectRefFromIdentifier(ident->value.strValue);
     if (ref == NULL)
          ref = declareSymbol(ident->value.strValue);
-    else if ((*ref)->referenceCount != -1) { 
-        // Reduce the referenceCount of the currently pointed to 
-        // wizObject and potentially clean it if it exists.
-        (*ref)->referenceCount--;
-        cleanWizObject(*ref);
-    }
-    /*
-
-        if the refCount is negative -1 it means that it is
-        an opCode argument (Not freeable until program
-        terminates) other wise it is incrmented since an
-        identifier now points to it
-    
-    */
-    if (temp->referenceCount != -1)
-        temp->referenceCount++;
+    else
+        decRef(*ref);
+    incRef(temp);
     *ref = temp;
     cleanWizObject(temp);
     cleanWizObject(ident);

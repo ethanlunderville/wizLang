@@ -12,14 +12,12 @@ struct wizList * initList(int size) {
     return list;
 }
 
-
 void appendToWizList(struct wizList * list, struct wizObject* element) {
     if (list->size >= list->capacity - 1) {
         list->capacity *= 2;
         list->wizV.value.listVal = realloc(list, list->capacity * sizeof(struct wizObject));
     }
     list->wizV.value.listVal[list->size] = element;
-    if (element->referenceCount != -1)
-        element->referenceCount++;
+    incRef(element);
     list->size++;
 }

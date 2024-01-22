@@ -103,12 +103,19 @@ const char* getTokenName(enum Tokens token) {
 char nEscape = '\n';
 char tEscape = '\t';
 char nullEscape = '\0';
-char* escapeMap(char c) {
+char* escapeMap(char c, long i) {
     switch (c) {
         case 'n': return &nEscape;
         case 't': return &tEscape;
         case '0': return &nullEscape;
-        default: return 0;
+        default: 
+        FATAL_ERROR(
+            PARSE, 
+            i, 
+            "Unrecognized escape character: %c%c", 
+            '\\',
+            c
+        );
     }
 }
 
@@ -148,13 +155,7 @@ char * createStringLexeme(long * bufferIndex, char * buffer, long lineNo) {
     for (int i = 0 ; i < strSize - 1 ; i++) {
         if (buffer[newCurrentIndex] == '\\') {
             newCurrentIndex++;
-            lexeme[i] = *escapeMap(buffer[newCurrentIndex]);
-            if (!(lexeme[i]))
-                FATAL_ERROR(
-                    PARSE, 
-                    lineNo, 
-                    "Unrecognized escape character: %c%c", '\\',buffer[newCurrentIndex]
-                );
+            lexeme[i] = *escapeMap(buffer[newCurrentIndex], i);
         } else {
             lexeme[i] = buffer[newCurrentIndex];
         }
@@ -220,7 +221,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
                 FATAL_ERROR(PARSE, lineNo, "Illegal empty character");
             if (buffer[i] == '\\') {
                 i++;
-                addToProgramList(escapeMap(buffer[i]), CHARADDRESS, lineNo , CHARACTER_LITERAL);
+                addToProgramList(escapeMap(buffer[i], lineNo), CHARADDRESS, lineNo , CHARACTER_LITERAL);
             }
             else
                 addToProgramList(&buffer[i], CHARADDRESS, lineNo , CHARACTER_LITERAL);
@@ -302,7 +303,12 @@ void lex(char* buffer, struct TokenStruct * programList) {
         }
         case '"': {
             i++; 
-            addToProgramList(createStringLexeme(&i, buffer, lineNo), STRINGTYPE, lineNo ,STRING); 
+            addToProgramList(
+                createStringLexeme(&i, buffer, lineNo), 
+                STRINGTYPE, 
+                lineNo ,
+                STRING
+            ); 
             break;
         }
         case ' ':
@@ -397,22 +403,24 @@ void printLexemes (struct TokenStruct * programList, long size) {
         );
 }
 
+bool onFreeableType(enum Tokens token) {
+    return (
+         token == STRING
+       ||token == NUM
+       ||token == IDENTIFIER
+       ||token == FUNCTIONCALLIDENT
+       ||token == INDEXIDENT
+    );
+}
+
 // Frees tokens of the program.
 
 void freeProgramList(struct TokenStruct * programList, long size) {
     for (long i = 0; i < size ; i++) {
         if (
             programList[i].lexeme != NULL 
-            && 
-            getKeywordStringIndex(programList[i].lexeme) == NULL
-            /*SINCE THESE TYPES HAVE ARE MALLOCED*/
-            && 
-            (  programList[i].token == STRING
-            || programList[i].token == NUM
-            || programList[i].token == IDENTIFIER
-            || programList[i].token == FUNCTIONCALLIDENT
-            || programList[i].token == INDEXIDENT
-            )
+            && getKeywordStringIndex(programList[i].lexeme) == NULL
+            && onFreeableType(programList[i].token)
             ) {
             free(programList[i].lexeme);
         }

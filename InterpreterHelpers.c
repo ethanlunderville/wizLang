@@ -14,6 +14,18 @@
 #include <stdio.h>
 #include "Interpreter.h"
 
+void decRef(struct wizObject * obj) {
+    if (obj->referenceCount != -1){
+        obj->referenceCount--;
+        cleanWizObject(obj);
+    }
+}
+
+void incRef(struct wizObject * obj) {
+    if (obj->referenceCount != -1)
+        obj->referenceCount++;
+}
+
 // HELPERS
 
 int removeZerosFromDoubleString(char * str) {
