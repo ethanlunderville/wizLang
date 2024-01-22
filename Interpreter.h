@@ -92,6 +92,8 @@ void* buildList();
 
 void decRef(struct wizObject * obj);
 void incRef(struct wizObject * obj);
+int translateIndex(int index, int size);
+void initNullV();
 
 int dumpStack();
 void interpret();
@@ -101,4 +103,5 @@ int floatStrContainsDecimal(char * str);
 int removeZerosFromDoubleString(char * str);
 void processPlusOperator(struct wizObject* val1, struct wizObject* val2, struct wizObject* opArgRef);
 
+const char* getTypeString(enum Types type);
 #endif

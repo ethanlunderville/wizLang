@@ -56,30 +56,6 @@ struct wizObject nullV;
 
 */
 
-void cleanWizObject(struct wizObject* wiz) {
-    if (wiz->referenceCount != 0)
-        return;
-    if (wiz->type == STRINGTYPE)
-        free(wiz->value.strValue);
-    else if (wiz->type == LIST){
-        struct wizList * list = (struct wizList*)wiz;
-        for (int i = 0 ; i < list->size ; i++)
-            decRef(wiz->value.listVal[0]);
-        free(list);
-        return;
-    }
-    free(wiz);
-}
-
-long fetchCurrentLine() {
-    return program[instructionIndex].lineNumber;
-}
-
-struct wizObject * fetchArg (long opCodeIndex) {
-    return &program[opCodeIndex].wizArg.wizArg;
-}
-
-
 int printCounterStack(struct lineCounterStack* counterStack) {
     puts("|---------Dump-----------|");
     int i = counterStack->stackSize - 1;
@@ -191,7 +167,6 @@ void* pushLookup() {
         ); 
     stack[stackSize] = *potentialLookup;
     stackSize++;
-    return NULL;
 }
 
 #define EQ_OP_EXECUTION_MACRO(op) \
@@ -320,16 +295,19 @@ void* binOpCode() {
 void* targetOffset() {
     struct wizObject * offsetWiz = pop();
     struct wizObject * continuosDataWiz = pop();
+    int index = (int)offsetWiz->value.numValue;
     if (continuosDataWiz->type == STRINGTYPE) {
+        int listSize = ((struct wizList*)continuosDataWiz)->size;
+        if (index < 0) index = translateIndex(index, listSize);
         struct wizObject* characterObj = (struct wizObject*)malloc(sizeof(struct wizObject));
         characterObj->referenceCount = 0;
         characterObj->type = CHARADDRESS;
-        characterObj->value.strValue = &(
-            (continuosDataWiz->value.strValue[(int)offsetWiz->value.numValue])
-        );
+        characterObj->value.strValue = &((continuosDataWiz->value.strValue[index]));
         pushInternal(characterObj);
     } else if (continuosDataWiz->type == LIST) {
-        pushInternal(((struct wizObject*)continuosDataWiz)->value.listVal[(int)offsetWiz->value.numValue]);
+        int listSize = ((struct wizList*)continuosDataWiz)->size;
+        if (index < 0) index = translateIndex(index, listSize);
+        pushInternal(((struct wizObject*)continuosDataWiz)->value.listVal[index]);
     }
     cleanWizObject(offsetWiz);
     cleanWizObject(continuosDataWiz);
@@ -376,7 +354,7 @@ void * call() {
     char* functionName = fetchArg(instructionIndex)->value.strValue;
     BuiltInFunctionPtr potentialBuiltin = getBuiltin(functionName);
     if (potentialBuiltin != 0) {
-        potentialBuiltin(functionName);
+        potentialBuiltin(fetchCurrentLine());
         popCounterStack(&stackFrames);
         return NULL;
     }
@@ -416,8 +394,12 @@ void * popClean() {
 }
 
 void * buildList() {
+    struct wizList * list;
     int elementCount = (int)fetchArg(instructionIndex)->value.numValue;
-    struct wizList * list = initList(elementCount);
+    if (elementCount == 0)
+        list = initList(elementCount + 1);
+    else
+        list = initList(elementCount);
     for (int i = 0 ; i < elementCount; i++)
         appendToWizList(list, pop());
     pushInternal((struct wizObject*)list);
@@ -427,14 +409,11 @@ void * unaryFlip() {
     struct wizObject * wizOb = pop();
     if (wizOb->type != NUMBER)
         FATAL_ERROR(RUNTIME, fetchCurrentLine(), "Attempted to negate non-numeric value");
-    wizOb->value.numValue = -(wizOb->value.numValue);
-    pushInternal(wizOb);
-}
-
-void initNullV() {
-    nullV.referenceCount = -1;
-    nullV.type = NUMBER;
-    nullV.value.numValue = 0;  
+    struct wizObject* newObj = (struct wizObject*)malloc(sizeof(struct wizObject));  
+    newObj->type = wizOb->type;
+    newObj->value.numValue = -(wizOb->value.numValue);
+    pushInternal(newObj);
+    cleanWizObject(wizOb);
 }
 
 /*

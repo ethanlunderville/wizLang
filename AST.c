@@ -47,7 +47,7 @@ void printAST(struct AST* ast){
 void addChild(struct AST* tree, struct AST* child) {
     if (tree->childCount == tree->childLimit - 1) {
         tree->childLimit = tree->childLimit*2;
-        tree->children = realloc(tree->children, tree->childLimit * sizeof(struct AST));
+        tree->children = realloc(tree->children, tree->childLimit * sizeof(struct AST*));
     } 
     tree->children[tree->childCount] = child;
     tree->childCount++;

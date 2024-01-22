@@ -14,7 +14,43 @@
 #include <stdio.h>
 #include "Interpreter.h"
 
+extern struct opCode * program;
+extern long instructionIndex;
+extern struct wizObject nullV;
+
+void initNullV() {
+    nullV.referenceCount = -1;
+    nullV.type = NUMBER;
+    nullV.value.numValue = 0;  
+}
+
+void cleanWizObject(struct wizObject* wiz) {
+    if (wiz->referenceCount != 0)
+        return;
+    if (wiz->type == STRINGTYPE)
+        free(wiz->value.strValue);
+    else if (wiz->type == LIST){
+        struct wizList * list = (struct wizList*)wiz;
+        for (int i = 0 ; i < list->size ; i++)
+            decRef(wiz->value.listVal[i]);
+        free(list->wizV.value.listVal);
+        free(list);
+        return;
+    }
+    free(wiz);
+}
+
+long fetchCurrentLine() {
+    return program[instructionIndex].lineNumber;
+}
+
+struct wizObject * fetchArg (long opCodeIndex) {
+    return &program[opCodeIndex].wizArg.wizArg;
+}
+
 void decRef(struct wizObject * obj) {
+    if (obj == NULL)
+        return;
     if (obj->referenceCount != -1){
         obj->referenceCount--;
         cleanWizObject(obj);
@@ -25,6 +61,12 @@ void incRef(struct wizObject * obj) {
     if (obj->referenceCount != -1)
         obj->referenceCount++;
 }
+
+int translateIndex(int index, int size) {
+    int newIndex = size - (abs(index) % size);
+    if (newIndex - size == 0) return 0; else return newIndex;
+}
+
 
 // HELPERS
 
@@ -43,6 +85,23 @@ int floatStrContainsDecimal(char * str) {
             return 1;
     } 
     return 0;
+}
+
+const char* getTypeString(enum Types type) {
+    switch (type) {
+        case NUMBER: return "NUMBER";
+        case STRINGTYPE: return "STRINGTYPE";
+        case BINOP: return "BINOP";
+        case OP: return "OP";
+        case UNARY: return "UNARY";
+        case EXPRESSION: return "EXPRESSION";
+        case EXPRESSION_NOASSIGN: return "EXPRESSION_NOASSIGN";
+        case CHARADDRESS: return "CHARADDRESS";
+        case LIST: return "LIST";
+        case CHAR: return "CHAR";
+        case NONE: return "NONE";
+        default: return "Invalid enum value";
+    }
 }
 
 /*

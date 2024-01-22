@@ -17,6 +17,7 @@ struct Context {
 };
 
 struct Context* initContext();
+void initGlobalContext();
 void printContext();
 int addToContext(char * identifier, struct wizObject * test);
 void* pushScope();

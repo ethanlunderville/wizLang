@@ -29,17 +29,17 @@
 extern struct Context* context;
 struct Context* globalContext;
 
+void initGlobalContext() {
+    globalContext = initContext();
+    context = globalContext;
+}
+
 struct Context* initContext() {
     // Init context struct
     struct Context* newContext = (struct Context*) malloc(sizeof(struct Context));
     memset(newContext->map,0,BASE_SCOPE_SIZE * sizeof(struct IdentifierMap));
     newContext->cPtr = NULL;
     newContext->currentIndex = 0;
-    // Set up global context if it doesnt exist already
-    if (context == NULL) {
-        globalContext = newContext;
-        context = newContext;
-    }
     return newContext;
 }
 
@@ -54,12 +54,8 @@ void* pushScope() {
 // When a function returns a context gets poped from the context stack
 
 void* popScope() {
-    for (int i = 0 ; i < context->currentIndex ; i++) {
-        context->map[i].value->referenceCount--;
-        if (context->map[i].value != NULL 
-        && context->map[i].value->referenceCount == 0)
-            free(context->map[i].value);
-    }
+    for (int i = 0 ; i < context->currentIndex ; i++) 
+        decRef(context->map[i].value);
     struct Context* temp = context;
     context = context->cPtr;
     free(temp);

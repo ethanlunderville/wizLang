@@ -151,7 +151,7 @@ void printOpCodes() {
 // Function that the Compiler.c file calls to kick off codeGen stage.
 
 struct opCode * codeGen(struct AST * aTree) {
-    initContext();
+    initGlobalContext();
     codeGenWalker(aTree);
     return program;
 }
@@ -215,8 +215,9 @@ void codeGenWalker(struct AST * aTree) {
             {
             union TypeStore value;
             value.strValue = aTree->token->lexeme;
-            ((struct wizList*)fetchArg(programAdder(aTree, push, value, STRINGTYPE)))->size = strlen(value.strValue);
-            ((struct wizList*)fetchArg(programAdder(aTree, push, value, STRINGTYPE)))->capacity = strlen(value.strValue);
+            long index = programAdder(aTree, push, value, STRINGTYPE);
+            ((struct wizList*)fetchArg(index))->size = strlen(value.strValue);
+            ((struct wizList*)fetchArg(index))->capacity = strlen(value.strValue);
             break;
             }
         case UNARY:

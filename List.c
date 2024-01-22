@@ -16,7 +16,7 @@ struct wizList * initList(int size) {
 void appendToWizList(struct wizList * list, struct wizObject* element) {
     if (list->size >= list->capacity - 1) {
         list->capacity *= 2;
-        list->wizV.value.listVal = realloc(list, list->capacity * sizeof(struct wizObject));
+        list->wizV.value.listVal = realloc(list->wizV.value.listVal, list->capacity * sizeof(struct wizObject*));
     }
     list->wizV.value.listVal[list->size] = element;
     incRef(element);
@@ -24,12 +24,10 @@ void appendToWizList(struct wizList * list, struct wizObject* element) {
 }
 
 void appendToString(struct wizList * string, struct wizObject* charElement) {
-    if (string->size >= string->capacity - 1) {
-        string->capacity *= 2;
-        string->wizV.value.strValue = realloc(string, string->capacity);
-    }
     if (charElement->type != CHARADDRESS)
         FATAL_ERROR(RUNTIME, -1, "Cannot append a non char type to string");
-    string->wizV.value.strValue[string->size] = charElement->value.strValue[0];
     string->size++;
+    string->wizV.value.strValue = realloc(string->wizV.value.strValue, string->size);
+    string->wizV.value.strValue[string->size - 1] = charElement->value.strValue[0];
+    string->wizV.value.strValue[string->size] = '\0';
 }

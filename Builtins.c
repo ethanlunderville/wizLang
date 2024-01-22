@@ -14,10 +14,11 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "Builtins.h"
 #include "Interpreter.h"
 #include "DataStructures.h"
-#include <stdlib.h>
+#include "Error.h"
 
 extern struct wizObject* stack;
 extern struct wizObject nullV;
@@ -26,10 +27,11 @@ extern struct wizObject nullV;
 BuiltInFunctionPtr getBuiltin(char * funcName) {
     if (strcmp("echo", funcName)==0) return &fEcho;
     if (strcmp("size", funcName)==0) return &fSize;
+    if (strcmp("append", funcName)==0) return &fAppend;
     return 0;
 }
 
-void* fSize() {
+void* fSize(long lineNo) {
     struct wizList* val = (struct wizList*)pop();
     struct wizObject* wizOb = (struct wizObject*)malloc(sizeof(struct wizObject));
     wizOb->type = NUMBER;
@@ -63,7 +65,24 @@ void* fEchoH() {
     pushInternal(&nullV);
 }
 
-void* fEcho() {
+void* fEcho(long lineNo) {
     fEchoH();
     printf("\n");
 }
+
+void* fAppend(long lineNo) {
+    struct wizObject* appender = pop();
+    struct wizObject* list = pop();
+    switch (list->type) {
+        case LIST: appendToWizList((struct wizList*) list, appender); break;
+        case STRINGTYPE: appendToString((struct wizList*) list, appender); break;
+        default: FATAL_ERROR(
+            RUNTIME, 
+            lineNo, 
+            "Attempted to append to an un-appendable type :: %s", 
+            getTypeString(list->type)
+        );
+    }
+    incRef(appender);
+    pushInternal(list);
+} 
