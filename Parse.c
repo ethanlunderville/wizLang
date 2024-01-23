@@ -34,6 +34,7 @@ long programListCapacity = BASE_PROGRAM_LIST_SIZE;
  NEEDS CLEANING AFTER EXPRESSION IS EVALUATED  */
 struct TokenStruct exprNoAssign;
 struct TokenStruct expr;
+struct TokenStruct lambda;
 
 ////////////////////////////////////////////////////////////////
 // LEXING RELATED FUNCTIONS
@@ -272,7 +273,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
                 i++;
                 addToProgramList(">=",BINOP,lineNo,GREATEREQUAL);
             } else {
-                addToProgramList("<",BINOP,lineNo,GREATERTHAN);
+                addToProgramList(">",BINOP,lineNo,GREATERTHAN);
             }
             break;
         }
@@ -441,6 +442,10 @@ void freeProgramList(struct TokenStruct * programList, long size) {
 
 // Parses every type of identifier
 
+struct AST* sFunctionCallLambda() {
+    
+}
+
 struct AST* sSubScriptTree() {
     struct AST* sTree = initAST(getCurrentTokenStruct());
     expect(OPENBRACKET);
@@ -453,6 +458,8 @@ struct AST* sSubScriptTree() {
     expect(CLOSEBRACKET);
     if (isCurrentToken(OPENBRACKET))
         addChild(sTree, sSubScriptTree());
+    if (isCurrentToken(LEFTPARENTH))
+        addChild(sTree, sFunctionCallLambda());
     return sTree;
 }
 
@@ -611,10 +618,8 @@ struct AST* sComplexType() {
                 addChild(complexTypeAST, sExpression(&expr));
                 if (!isCurrentToken(CLOSEBRACE)) {        
                     if ((i % 2) == 0) {
-                        if (isCurrentToken(ENDLINE)) {
-                            while (isCurrentToken(ENDLINE))
-                                scan(); 
-                        }
+                        while (isCurrentToken(ENDLINE))
+                            scan(); 
                         expect(COLON);
                     } else {
                         if (isCurrentToken(ENDLINE)) {
@@ -678,6 +683,26 @@ struct AST* sFunctionDeclaration() {
     return defTree;
 }
 
+
+struct AST * sLambda() {
+    struct AST* lTree = initAST(getCurrentTokenStruct());
+    struct AST* pseudoIdentTree = initAST(NULL);
+    addChild(lTree, pseudoIdentTree);
+    expect(LEFTPARENTH);
+    while (!isCurrentToken(RIGHTPARENTH)) {
+        addChild(pseudoIdentTree, initAST(getCurrentTokenStruct()));
+        scan();
+        if (!isCurrentToken(RIGHTPARENTH)) 
+            expect(COMMA);
+    }
+    scan();
+    expect(ASSIGNMENT);
+    expect(GREATERTHAN);
+    addChild(pseudoIdentTree, sBlock());
+    lTree->token->token = LAMBDA;
+    return lTree;
+}
+
 /*
 
     Parser: STAGE 2
@@ -696,6 +721,7 @@ void initParserData() {
     exprNoAssign.type = EXPRESSION_NOASSIGN;
     expr.token = BEGINOPERATORS;
     exprNoAssign.token = BEGINOPERATORS;
+    lambda.token = LAMBDA;
 }
 
 struct AST* parse() {
@@ -926,6 +952,28 @@ void createTreeOutOfTopTwoOperandsAndPushItBackOnTheOperandStack(
     push(operandStack, operatorHold);
 }
 
+bool checkLambda() {
+    long currentTokenISave = currentProgramListCounter;
+    expect(LEFTPARENTH);
+    while (!isCurrentToken(RIGHTPARENTH)) {
+        if (isCurrentToken(COMMA)) {
+            currentProgramListCounter = currentTokenISave;
+            return true;
+        }
+        scan();
+    }
+    scan();
+    if (isCurrentToken(ASSIGNMENT)) {
+        scan();
+        if (isCurrentToken(GREATERTHAN)) {
+            currentProgramListCounter = currentTokenISave;
+            return true;
+        }
+    }
+    currentProgramListCounter = currentTokenISave;
+    return false;
+}
+
 struct AST* sOperand(struct ASTStack * operandStack, int parseUn) {
 #ifdef OUTPUT_EXPRESSIONS 
     printf("%s ", getCurrentTokenStruct()->lexeme);
@@ -947,9 +995,14 @@ struct AST* sOperand(struct ASTStack * operandStack, int parseUn) {
     } else if (isCurrentToken(IDENTIFIER)) {
         pushTree = sIdentTree();
     } else if (isCurrentToken(LEFTPARENTH)){
-        scan();
-        pushTree = sExpression(&expr);
-        expect(RIGHTPARENTH);
+        if (checkLambda()) {
+            pushTree = sLambda();
+            b();
+        } else {
+            scan();
+            pushTree = sExpression(&expr);
+            expect(RIGHTPARENTH);
+        }
     } else if (onComplexType()) {
         pushTree = sComplexType();
     } else if (onData()) {

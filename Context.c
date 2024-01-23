@@ -53,9 +53,13 @@ void* pushScope() {
 
 // When a function returns a context gets poped from the context stack
 
-void* popScope() {
-    for (int i = 0 ; i < context->currentIndex ; i++) 
-        decRef(context->map[i].value);
+void* popScope(struct wizObject* retVal) {
+    for (int i = 0 ; i < context->currentIndex ; i++) {
+        if (retVal == NULL || retVal != context->map[i].value) 
+            decRef(context->map[i].value);
+        else if (retVal->referenceCount != -1)
+                retVal->referenceCount--;
+    }
     struct Context* temp = context;
     context = context->cPtr;
     free(temp);

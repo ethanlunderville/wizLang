@@ -93,6 +93,7 @@ char * opCodeStringMap (ByteCodeFunctionPtr fP) {
     else if (fP == &buildList) return "BUILDLIST";
     else if (fP == &buildDict) return "BUILDDICT";
     else if (fP == &sliceOp) return "SLICEOP";
+    else if (fP == &targetLValOffset) return "PUSHOFFSETL";
     else return 0x0;
 }
 
@@ -252,11 +253,10 @@ void codeGenWalker(struct AST * aTree) {
                 i++;
             }
             for (; i < aTree->childCount ; i++){
-                codeGenWalker(aTree->children[i]); 
-                if (aTree->token->token == ASSIGNMENT && i == 0)
+                if (aTree->token->token == ASSIGNMENT && i == 0) 
                     onLVal = true;
-                else 
-                    onLVal = false;
+                else onLVal = false;
+                codeGenWalker(aTree->children[i]); 
             }
             union TypeStore value;
             value.opValue = aTree->token->token;
@@ -321,10 +321,10 @@ void codeGenWalker(struct AST * aTree) {
                 codeGenWalker(aTree->children[i]);
             break;
             }
+        case LAMBDA:
         case DEF:
             {
-            // Declare the function with the function identifier
-            struct wizObject ** funcVal = declareSymbol(aTree->children[0]->token->lexeme);
+            //b();
             /*
             Create a wiz object that stores the current line
             as an argument so that when the function is called
@@ -334,7 +334,15 @@ void codeGenWalker(struct AST * aTree) {
             lineHolder->type = NUMBER;
             lineHolder->referenceCount = 1;
             lineHolder->value.numValue = programSize + 2; // Add three to skip the jump
-            *funcVal = lineHolder;
+            // Declare the function with the function identifier
+            if (aTree->token->token == DEF){
+                struct wizObject ** funcVal = declareSymbol(aTree->children[0]->token->lexeme);
+                *funcVal = lineHolder;
+            } else if (aTree->token->token == LAMBDA) {
+                union TypeStore ov;
+                ov.numValue = lineHolder->value.numValue+1;
+                programAdder(aTree,push,ov,NUMBER);
+            }
             // Initialize an unconditional jump that prevents the function from being called when it is declared
             union TypeStore value;
             value.numValue = 0;
@@ -397,7 +405,13 @@ void codeGenWalker(struct AST * aTree) {
         case OPENBRACKET:
             {
             codeGenWalker(aTree->children[0]);
-            programAdder(aTree, targetOffset, nullVal, -1);
+            if (onLVal && aTree->childCount == 1) {
+                programAdder(aTree, targetLValOffset, nullVal, -1);
+            } else {
+                programAdder(aTree, targetOffset, nullVal, -1);
+            }
+            if (aTree->childCount > 1)
+                codeGenWalker(aTree->children[1]);
             break;
             }
         case RETURN:

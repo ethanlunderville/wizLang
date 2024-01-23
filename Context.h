@@ -21,7 +21,7 @@ void initGlobalContext();
 void printContext();
 int addToContext(char * identifier, struct wizObject * test);
 void* pushScope();
-void* popScope();
+void* popScope(struct wizObject* retVal);
 struct wizObject ** getObjectRefFromIdentifier(char * ident);
 struct wizObject ** getObjectRefFromIdentifierLocal(char * ident);
 struct wizObject ** declareSymbol(char * ident);

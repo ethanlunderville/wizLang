@@ -243,32 +243,34 @@ void* binOpCode() {
             }
         case ASSIGNMENT: 
             {
+                b();
             struct wizObject * temp = pop();
             struct wizObject * ident = pop();
             struct wizObject ** ref;
             switch (ident->type) {
-                case STRINGTYPE:
-                case NUMBER: 
+                case WIZOBJECTPOINTER:
                 {
-                    ident->value = temp->value;
-                    ident->type = temp->type;
-                    break;
+                ref = ident->value.ptrVal;
+                decRef(*ref);
+                *ref = temp;
+                incRef(temp);
+                break;
                 }
                 case CHARADDRESS: 
                 {
-                    ident->value.strValue[0] = *(temp->value.strValue);
-                    break;
+                ident->value.strValue[0] = *(temp->value.strValue);
+                break;
                 }
                 case IDENT: 
                 {
-                    ref = getObjectRefFromIdentifier(ident->value.strValue);
-                    if (ref == NULL)
-                        ref = declareSymbol(ident->value.strValue);
-                    else
-                        decRef(*ref);
-                    incRef(temp);
-                    *ref = temp;
-                    break;
+                ref = getObjectRefFromIdentifier(ident->value.strValue);
+                if (ref == NULL)
+                    ref = declareSymbol(ident->value.strValue);
+                else
+                    decRef(*ref);
+                incRef(temp);
+                *ref = temp;
+                break;
                 }
             }
             cleanWizObject(temp);
@@ -318,10 +320,10 @@ void* targetOffset() {
             for (int i = 0 ; i < keys->size ; i++) {
                 if (keys->wizV.value.listVal[i]->type == STRINGTYPE && strcmp(keys->wizV.value.listVal[i]->value.strValue, offsetWiz->value.strValue) == 0){
                     pushInternal(values->wizV.value.listVal[i]);
-                    break;
+                    return NULL;
                 }
             }
-            // If its not found
+            FATAL_ERROR(RUNTIME, fetchCurrentLine(), "Invalid key for dictionary");
             break;
             }
             case CHAR:
@@ -331,10 +333,75 @@ void* targetOffset() {
             for (int i = 0 ; i < keys->size ; i++) {
                 if (keys->wizV.value.listVal[i]->type == NUMBER && keys->wizV.value.listVal[i]->value.numValue == offsetWiz->value.numValue){
                     pushInternal(values->wizV.value.listVal[i]);
-                    break;
+                    return NULL;
                 }
             }
+            FATAL_ERROR(RUNTIME, fetchCurrentLine(), "Invalid key for dictionary");
             break;    
+            }
+        }
+    }
+    cleanWizObject(offsetWiz);
+    cleanWizObject(continuosDataWiz);
+}
+
+void* targetLValOffset() {
+    struct wizObject * offsetWiz = pop();
+    struct wizObject * continuosDataWiz = pop();
+    int index = (int)offsetWiz->value.numValue;
+    if (continuosDataWiz->type == STRINGTYPE) {
+        int listSize = ((struct wizList*)continuosDataWiz)->size;
+        if (index < 0) index = translateIndex(index, listSize);
+        struct wizObject* characterObj = initWizObject(CHARADDRESS);
+        characterObj->value.strValue = &((continuosDataWiz->value.strValue[index]));
+        pushInternal(characterObj);
+    } else if (continuosDataWiz->type == LIST) {
+        int listSize = ((struct wizList*)continuosDataWiz)->size;
+        if (index < 0) index = translateIndex(index, listSize);
+        struct wizObject * ptr = initWizObject(WIZOBJECTPOINTER);
+        ptr->value.ptrVal = &(((struct wizObject*)continuosDataWiz)->value.listVal[index]); 
+        pushInternal(ptr);
+    } else if (continuosDataWiz->type == DICTIONARY) {
+        struct wizList* keys = ((struct wizDict*)continuosDataWiz)->keys;
+        struct wizList* values = ((struct wizDict*)continuosDataWiz)->values;
+        switch (offsetWiz->type) {
+            case STRINGTYPE: 
+            {
+            for (int i = 0 ; i < keys->size ; i++) {
+                if (keys->wizV.value.listVal[i]->type == STRINGTYPE && strcmp(keys->wizV.value.listVal[i]->value.strValue, offsetWiz->value.strValue) == 0){
+                    struct wizObject * ptr = initWizObject(WIZOBJECTPOINTER);
+                    ptr->value.ptrVal = &(values->wizV.value.listVal[i]);
+                    pushInternal(ptr);
+                    return NULL;
+                }
+            }
+            appendToWizList(keys, offsetWiz);
+            struct wizObject* wizTempNull = &nullV;//initWizObject(NULLP);
+            appendToWizList(values, wizTempNull);
+            struct wizObject* ptr = initWizObject(WIZOBJECTPOINTER);
+            ptr->value.ptrVal = &(values->wizV.value.listVal[values->size - 1]);
+            pushInternal(ptr);
+            break;
+            }
+            case CHAR:
+            case CHARADDRESS:
+            case NUMBER:
+            {
+            for (int i = 0 ; i < keys->size ; i++) {
+                if (keys->wizV.value.listVal[i]->type == NUMBER && keys->wizV.value.listVal[i]->value.numValue == offsetWiz->value.numValue){
+                    struct wizObject * ptr = initWizObject(WIZOBJECTPOINTER);
+                    ptr->value.ptrVal = &(values->wizV.value.listVal[i]);
+                    pushInternal(ptr);
+                    return NULL;
+                }
+            }
+            appendToWizList(keys, offsetWiz);
+            struct wizObject* wizTempNull = &nullV;//initWizObject(NULLP);
+            appendToWizList(values, wizTempNull);
+            struct wizObject* ptr = initWizObject(WIZOBJECTPOINTER);
+            ptr->value.ptrVal = &(values->wizV.value.listVal[values->size - 1]);
+            pushInternal(ptr);
+            break;   
             }
         }
     }
@@ -399,12 +466,10 @@ void * fReturn() {
         cleanWizObject(pop());    
     popCounterStack(&stackFrames);
     instructionIndex = popCounterStack(&returnLines);
-    popScope();
+    popScope(retVal);
     if (stackSize == STACK_LIMIT) 
         FATAL_ERROR(LANGUAGE, fetchCurrentLine(), "Stack Overflow");
     pushInternal(retVal);
-    //stack[stackSize] = retVal;
-    //stackSize++;
 }
 
 void * fReturnNoArg() {
@@ -413,7 +478,7 @@ void * fReturnNoArg() {
         cleanWizObject(pop());
     popCounterStack(&stackFrames);
     instructionIndex = popCounterStack(&returnLines);
-    popScope();
+    popScope(NULL);
     pushInternal(&nullV);
 }
 
@@ -508,5 +573,5 @@ void interpret() {
 #endif
     }
     // Pops the global scope
-    popScope(); 
+    popScope(NULL); 
 }

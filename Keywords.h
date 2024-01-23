@@ -67,6 +67,7 @@ enum Tokens {
 
     OPENBRACE,
     CLOSEBRACE,
+    LAMBDA,
 
     DEF,
     RETURN,
@@ -95,6 +96,8 @@ enum Types {
     EXPRESSION,
     EXPRESSION_NOASSIGN,
     IDENT,
+    WIZOBJECTPOINTER,
+    NULLP,
     //Chars are handled uniquely to prevent the need to make a wizobject for every char
     CHARADDRESS, 
     DICTIONARY,

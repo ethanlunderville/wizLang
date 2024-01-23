@@ -31,6 +31,7 @@ union TypeStore {
     double numValue;
     char* strValue;
     struct wizObject** listVal;
+    struct wizObject** ptrVal;
     enum Tokens opValue;
 };
 
@@ -101,6 +102,7 @@ void* popClean();
 void* buildList();
 void* buildDict();
 void* sliceOp();
+void* targetLValOffset();
 
 void decRef(struct wizObject * obj);
 void incRef(struct wizObject * obj);

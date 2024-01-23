@@ -1,4 +1,3 @@
-x = 1 
-z = x
-x++
-echo(z)
+list = [() => { return 5 } , 5]
+
+echo(list[0]())
