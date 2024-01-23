@@ -46,9 +46,18 @@ struct wizList {
     int capacity;
 };
 
+struct wizDict {
+    struct wizList keys;
+    struct wizList values;
+    int size;
+    int capacity;
+};
+
+
 union wizUnion {
     struct wizObject wizArg;
     struct wizList wizList;
+    struct wizDict wizDict;
 };
 
 struct opCode {
@@ -67,7 +76,7 @@ void cleanWizObject(struct wizObject* wiz);
 
 long fetchCurrentLine();
 
-struct wizObject * fetchArg (long opCodeIndex);
+struct wizObject * fetchArg(long opCodeIndex);
 struct opCode * codeGen(struct AST * aTree);
 void codeGenWalker(struct AST * aTree);
 void printOpCodes();
@@ -89,11 +98,15 @@ void* jumpNe();
 void* pushLookup();
 void* popClean();
 void* buildList();
+void* sliceOp();
 
 void decRef(struct wizObject * obj);
 void incRef(struct wizObject * obj);
 int translateIndex(int index, int size);
 void initNullV();
+struct wizObject* initWizObject(enum Types type);
+struct wizList* initWizList(enum Types type);
+struct wizList* initWizString(char* str);
 
 int dumpStack();
 void interpret();

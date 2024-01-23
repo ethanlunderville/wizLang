@@ -135,7 +135,6 @@ void* pushInternal(struct wizObject* arg) {
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     stack[stackSize] = arg;
     stackSize++;
-    return NULL;
 }
 
 // Pushes a value onto the Runtime Stack.
@@ -146,7 +145,6 @@ void* push() {
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     stack[stackSize] = fetchArg(instructionIndex);
     stackSize++;
-    return NULL;
 }
 
 // Pushes a value from the enviroment onto the Runtime Stack.
@@ -174,9 +172,7 @@ void* pushLookup() {
     struct wizObject* rWiz = pop(); \
     struct wizObject* lWiz = pop(); \
     union TypeStore typeVal; \
-    struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject)); \
-    wizInplace->referenceCount = 0; \
-    wizInplace->type = NUMBER; \
+    struct wizObject* wizInplace = initWizObject(NUMBER); \
     if (lWiz->type == STRINGTYPE && rWiz->type == STRINGTYPE) { \
         typeVal.numValue = (double)(strcmp(rWiz->value.strValue, lWiz->value.strValue) op 0); \
     } else if (lWiz->type == CHARADDRESS && rWiz->type == CHARADDRESS) { \
@@ -197,9 +193,7 @@ void* pushLookup() {
     { \
     double rightHand; \
     double leftHand; \
-    struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject)); \
-    wizInplace->referenceCount = 0; \
-    wizInplace->type = NUMBER; \
+    struct wizObject* wizInplace = initWizObject(NUMBER); \
     union TypeStore temp; \
     struct wizObject* rWiz = pop(); \
     struct wizObject* lWiz = pop(); \
@@ -226,8 +220,7 @@ void* binOpCode() {
             {   
             struct wizObject* val2 = pop();
             struct wizObject* val1 = pop();
-            struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject));
-            wizInplace->referenceCount = 0;
+            struct wizObject* wizInplace = initWizObject(NUMBER);
             processPlusOperator(val1, val2, wizInplace);
             cleanWizObject(val1);
             cleanWizObject(val2); 
@@ -236,9 +229,7 @@ void* binOpCode() {
         case POWER:
             {
             double rightHand;
-            struct wizObject* wizInplace = (struct wizObject*)malloc(sizeof(struct wizObject));
-            wizInplace->referenceCount = 0;
-            wizInplace->type = NUMBER;
+            struct wizObject* wizInplace = initWizObject(NUMBER);
             union TypeStore temp;
             struct wizObject * rWiz = pop();
             rightHand = rWiz->value.numValue;
@@ -299,9 +290,7 @@ void* targetOffset() {
     if (continuosDataWiz->type == STRINGTYPE) {
         int listSize = ((struct wizList*)continuosDataWiz)->size;
         if (index < 0) index = translateIndex(index, listSize);
-        struct wizObject* characterObj = (struct wizObject*)malloc(sizeof(struct wizObject));
-        characterObj->referenceCount = 0;
-        characterObj->type = CHARADDRESS;
+        struct wizObject* characterObj = initWizObject(CHARADDRESS);
         characterObj->value.strValue = &((continuosDataWiz->value.strValue[index]));
         pushInternal(characterObj);
     } else if (continuosDataWiz->type == LIST) {
@@ -346,9 +335,7 @@ void * jumpNe() {
     cleanWizObject(wizOb);
 }
 
-void * createStackFrame() {
-    pushCounterStack(&stackFrames, stackSize);
-}
+void * createStackFrame() { pushCounterStack(&stackFrames, stackSize); }
 
 void * call() {
     char* functionName = fetchArg(instructionIndex)->value.strValue;
@@ -375,8 +362,9 @@ void * fReturn() {
     popScope();
     if (stackSize == STACK_LIMIT) 
         FATAL_ERROR(LANGUAGE, fetchCurrentLine(), "Stack Overflow");
-    stack[stackSize] = retVal;
-    stackSize++;
+    pushInternal(retVal);
+    //stack[stackSize] = retVal;
+    //stackSize++;
 }
 
 void * fReturnNoArg() {
@@ -389,9 +377,7 @@ void * fReturnNoArg() {
     pushInternal(&nullV);
 }
 
-void * popClean() {
-    cleanWizObject(pop());
-}
+void * popClean() { cleanWizObject(pop()); }
 
 void * buildList() {
     struct wizList * list;
@@ -405,12 +391,49 @@ void * buildList() {
     pushInternal((struct wizObject*)list);
 }
 
+void * buildDict() {
+    int iterNum = ((int)fetchArg(instructionIndex))/2;
+    for (int i = 0 ; i < iterNum ; i++) {
+        
+    }
+}
+
+void * sliceOp() {
+    struct wizObject* upBound = pop();
+    struct wizObject* lowBound = pop();
+    struct wizObject* continuosDataWiz = pop();
+    if (continuosDataWiz->type != STRINGTYPE && continuosDataWiz->type != LIST)
+        FATAL_ERROR(RUNTIME, fetchCurrentLine(), "Cannot invoke slice operator on a non subscriptable data type");
+    if (upBound->type != NUMBER || lowBound->type != NUMBER)
+        FATAL_ERROR(RUNTIME, fetchCurrentLine(), "String slice boundary was not a number");    
+    int upper = upBound->value.numValue;
+    int lower = lowBound->value.numValue;
+    if (upper < lower)
+        FATAL_ERROR(RUNTIME, fetchCurrentLine(), "String slice upper boundary is smaller than the lower boundary");
+    if (upper > (((struct wizList *)continuosDataWiz)->size))
+        FATAL_ERROR(RUNTIME, fetchCurrentLine(), "String slice upper boundary out of range");    
+    struct wizList * newList;
+    int newSize = upper - lower;
+    if (continuosDataWiz->type == LIST) {
+        newList = initList(newSize);
+        for (int i = lower ; i < newSize ; i++)
+            appendToWizList(newList, continuosDataWiz->value.listVal[i]);
+    } else if (continuosDataWiz->type == STRINGTYPE) {
+        char * newStr = (char*)malloc(newSize + 1);
+        strcpy(newStr, (char*)(continuosDataWiz->value.strValue + lower));
+        newStr[newSize] = '\0';
+        newList = initWizString(newStr);
+    }
+    cleanWizObject(upBound);
+    cleanWizObject(lowBound);
+    pushInternal((struct wizObject*)newList);
+}
+
 void * unaryFlip() {
     struct wizObject * wizOb = pop();
     if (wizOb->type != NUMBER)
         FATAL_ERROR(RUNTIME, fetchCurrentLine(), "Attempted to negate non-numeric value");
-    struct wizObject* newObj = (struct wizObject*)malloc(sizeof(struct wizObject));  
-    newObj->type = wizOb->type;
+    struct wizObject* newObj = initWizObject(wizOb->type);
     newObj->value.numValue = -(wizOb->value.numValue);
     pushInternal(newObj);
     cleanWizObject(wizOb);

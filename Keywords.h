@@ -73,6 +73,7 @@ enum Tokens {
 
     OPENBRACKET,
     CLOSEBRACKET,
+    COLON,
 
     ENDOFFILE
 };
@@ -95,6 +96,7 @@ enum Types {
     EXPRESSION_NOASSIGN,
     //Chars are handled uniquely to prevent the need to make a wizobject for every char
     CHARADDRESS, 
+    DICTIONARY,
     LIST,
     CHAR,
     NONE

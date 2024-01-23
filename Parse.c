@@ -79,23 +79,34 @@ const char* getTokenName(enum Tokens token) {
         case MULTIPLY: return "MULTIPLY";
         case DIVIDE: return "DIVIDE";
         case POWER: return "POWER";
+        case DOTOP: return "DOTOP";
         case BEGINOPERANDS: return "BEGINOPERANDS";
         case LEFTPARENTH: return "LEFTPARENTH";
         case ENDOPERATORS: return "ENDOPERATORS";
         case RIGHTPARENTH: return "RIGHTPARENTH";
         case NUM: return "NUM";
         case STRING: return "STRING";
+        case CHARACTER_LITERAL: return "CHARACTER_LITERAL";
         case IDENTIFIER: return "IDENTIFIER";
+        case FUNCTIONCALLIDENT: return "FUNCTIONCALLIDENT";
+        case INDEXIDENT: return "INDEXIDENT";
         case ENDOPERANDS: return "ENDOPERANDS";
         case COMMA: return "COMMA";
+        case SEMICOLON: return "SEMICOLON";
         case ENDLINE: return "ENDLINE";
         case IF: return "IF";
+        case ELSE: return "ELSE";
         case WHILE: return "WHILE";
-        case ENDOFFILE: return "ENDOFFILE";
         case FOR: return "FOR";
-        case SEMICOLON: return "SEMICOLON";
-        case DOTOP: return "DOTOP";
-        default: return "Token not found";
+        case OPENBRACE: return "OPENBRACE";
+        case CLOSEBRACE: return "CLOSEBRACE";
+        case DEF: return "DEF";
+        case RETURN: return "RETURN";
+        case OPENBRACKET: return "OPENBRACKET";
+        case CLOSEBRACKET: return "CLOSEBRACKET";
+        case COLON: return "COLON";
+        case ENDOFFILE: return "ENDOFFILE";
+        default: return "UNKNOWN";
     }
 }
 
@@ -210,6 +221,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
         case '-': addToProgramList("-", BINOP, lineNo ,SUBTRACT); break;
         case ';': addToProgramList(";", NONE, lineNo ,SEMICOLON); break;
         case '.': addToProgramList(".", NONE, lineNo ,DOTOP); break;
+        case ':': addToProgramList(":", NONE, lineNo ,COLON); break;
         case '\n': {
             addToProgramList("\n", NONE, lineNo ,ENDLINE); 
             lineNo++; 
@@ -433,6 +445,11 @@ struct AST* sSubScriptTree() {
     struct AST* sTree = initAST(getCurrentTokenStruct());
     expect(OPENBRACKET);
     addChild(sTree, sExpression(&expr));
+    if (isCurrentToken(COLON)) {
+        scan();
+        sTree->token->token = COLON;
+        addChild(sTree, sExpression(&expr));
+    }
     expect(CLOSEBRACKET);
     if (isCurrentToken(OPENBRACKET))
         addChild(sTree, sSubScriptTree());
@@ -585,6 +602,30 @@ struct AST* sComplexType() {
     switch (getCurrentTokenStruct()->token) {
         case OPENBRACE: 
             {
+            complexTypeAST->token->type = DICTIONARY;
+            scan();
+            int i = 0;
+            while (!isCurrentToken(CLOSEBRACE)) {
+                if ((i % 2 - 1) = 0)
+                    
+                while (isCurrentToken(ENDLINE))
+                    scan();
+                addChild(complexTypeAST, sExpression(&expr));
+                while (isCurrentToken(ENDLINE))
+                    scan();
+                if (!isCurrentToken(CLOSEBRACE)) {
+                    expect(COLON);
+                    i++;
+                    continue;
+                }
+            }
+            scan();
+            if (complexTypeAST->childCount % 2 != 0)
+                FATAL_ERROR(
+                    PARSE, 
+                    getCurrentLine(), 
+                    "Every key in a dictionary must have a corresponding value"
+                );
             break;
             }
         case OPENBRACKET:
@@ -592,7 +633,11 @@ struct AST* sComplexType() {
             complexTypeAST->token->type = LIST;
             scan();
             while (!isCurrentToken(CLOSEBRACKET)) {
+                while (isCurrentToken(ENDLINE))
+                    scan();
                 addChild(complexTypeAST, sExpression(&expr));
+                while (isCurrentToken(ENDLINE))
+                    scan();
                 if (!isCurrentToken(CLOSEBRACKET)) {
                     expect(COMMA);
                     continue;
@@ -767,6 +812,7 @@ bool onExpressionBreaker() {
        ||isCurrentToken(CLOSEBRACKET)
        ||isCurrentToken(CLOSEBRACE)
        ||isCurrentToken(SEMICOLON)
+       ||isCurrentToken(COLON)
     ) return true;
     return false;
 }

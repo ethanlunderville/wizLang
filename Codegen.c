@@ -65,6 +65,7 @@ long programAdder(struct AST* node, ByteCodeFunctionPtr op, union TypeStore val,
     program[programSize].associatedOperation = op;
     program[programSize].wizArg.wizArg.value = val;
     program[programSize].wizArg.wizArg.type = type;
+    program[programSize].wizArg.wizList.size = 0;
     // Static variables are ignored by the mem manager since they have a refCount of -1
     program[programSize].wizArg.wizArg.referenceCount = -1;
     programSize++;
@@ -186,6 +187,15 @@ void codeGenWalker(struct AST * aTree) {
                 codeGenWalker(aTree->children[i]);
             if (aTree->token->type == EXPRESSION_NOASSIGN)
                 programAdder(aTree, popClean, nullVal, -1);
+            break;
+            }
+        case DICTIONARY:
+            {
+            for (int i = 0 ; i < aTree->childCount ; i++)
+                codeGenWalker(aTree->children[i]);
+            union TypeStore value;
+            value.numValue = (double)aTree->childCount;
+            programAdder(aTree, buildDict, value, NUMBER);    
             break;
             }
         case LIST: 
@@ -391,6 +401,13 @@ void codeGenWalker(struct AST * aTree) {
                 break;
             }
             programAdder(aTree,fReturnNoArg, nullVal, -1);
+            break;
+            }
+        case COLON:
+            {
+            for (int i = 0 ; i < aTree->childCount ; i++)
+                codeGenWalker(aTree->children[i]);
+            programAdder(aTree,sliceOp, nullVal, -1);
             break;
             }
         default: break;

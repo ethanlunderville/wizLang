@@ -19,6 +19,7 @@
 #include "Interpreter.h"
 #include "DataStructures.h"
 #include "Error.h"
+#include "Mem.h"
 
 extern struct wizObject* stack;
 extern struct wizObject nullV;
@@ -28,6 +29,7 @@ BuiltInFunctionPtr getBuiltin(char * funcName) {
     if (strcmp("echo", funcName)==0) return &fEcho;
     if (strcmp("size", funcName)==0) return &fSize;
     if (strcmp("append", funcName)==0) return &fAppend;
+    if (strcmp("type", funcName)==0) return &fType;
     return 0;
 }
 
@@ -86,3 +88,21 @@ void* fAppend(long lineNo) {
     incRef(appender);
     pushInternal(list);
 } 
+
+void * fType(long lineNo) {
+    struct wizObject* tVal = pop();
+    struct wizObject* ret = initWizObject(STRINGTYPE);   
+    switch (tVal->type) {
+        case NUMBER: ret->value.strValue = copyStr("NUMBER"); break;
+        case STRINGTYPE: ret->value.strValue = copyStr("STRINGTYPE"); break;
+        case BINOP: ret->value.strValue = copyStr("BINOP"); break;
+        case OP: ret->value.strValue = copyStr("OP"); break;
+        case CHARADDRESS: ret->value.strValue = copyStr("CHAR"); break;
+        case LIST: ret->value.strValue = copyStr("LIST"); break;
+        case CHAR: ret->value.strValue = copyStr("CHAR"); break;
+    default:
+        FATAL_ERROR(LANGUAGE, lineNo, "UNRECOGNIZED TYPE");
+    }
+    cleanWizObject(tVal);
+    pushInternal(ret);
+}

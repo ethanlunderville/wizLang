@@ -1,7 +1,14 @@
 #include <stdlib.h>
+#include <string.h>
 #include "DataStructures.h"
 #include "Keywords.h"
 #include "Error.h"
+
+struct wizObject* initWizObject(enum Types type) {
+    struct wizObject * obj = (struct wizObject *) malloc(sizeof(struct wizObject));
+    obj->type = type;
+    obj->referenceCount = 0;
+}
 
 struct wizList * initList(int size) {
     struct wizList * list = (struct wizList *)malloc(sizeof(struct wizList)); 
@@ -10,6 +17,16 @@ struct wizList * initList(int size) {
     list->wizV.type = LIST;
     list->wizV.referenceCount = 0;
     list->wizV.value.listVal = malloc(list->capacity * sizeof(struct wizObject*));
+    return list;
+}
+
+struct wizList * initWizString(char* str) {
+    struct wizList * list = (struct wizList *)malloc(sizeof(struct wizList)); 
+    list->size = strlen(str);
+    list->capacity = strlen(str);
+    list->wizV.type = STRINGTYPE;
+    list->wizV.referenceCount = 0;
+    ((struct wizObject*)list)->value.strValue = str;
     return list;
 }
 
