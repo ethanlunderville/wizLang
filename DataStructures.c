@@ -20,6 +20,17 @@ struct wizList * initList(int size) {
     return list;
 }
 
+struct wizDict * initDict(struct wizList * keys, struct wizList * values) {
+    struct wizDict * dict = (struct wizDict *)malloc(sizeof(struct wizDict));
+    dict->wizV.type = DICTIONARY;
+    dict->wizV.referenceCount = 0;
+    dict->keys = keys;
+    dict->values = values;
+    incRef((struct wizObject*)keys);
+    incRef((struct wizObject*)values);
+    return dict;
+}
+
 struct wizList * initWizString(char* str) {
     struct wizList * list = (struct wizList *)malloc(sizeof(struct wizList)); 
     list->size = strlen(str);

@@ -94,6 +94,7 @@ enum Types {
     UNARY,
     EXPRESSION,
     EXPRESSION_NOASSIGN,
+    IDENT,
     //Chars are handled uniquely to prevent the need to make a wizobject for every char
     CHARADDRESS, 
     DICTIONARY,

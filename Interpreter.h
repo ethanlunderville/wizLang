@@ -47,8 +47,9 @@ struct wizList {
 };
 
 struct wizDict {
-    struct wizList keys;
-    struct wizList values;
+    struct wizObject wizV;
+    struct wizList* keys;
+    struct wizList* values;
     int size;
     int capacity;
 };
@@ -98,6 +99,7 @@ void* jumpNe();
 void* pushLookup();
 void* popClean();
 void* buildList();
+void* buildDict();
 void* sliceOp();
 
 void decRef(struct wizObject * obj);

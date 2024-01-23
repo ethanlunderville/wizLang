@@ -606,15 +606,22 @@ struct AST* sComplexType() {
             scan();
             int i = 0;
             while (!isCurrentToken(CLOSEBRACE)) {
-                if ((i % 2 - 1) = 0)
-                    
                 while (isCurrentToken(ENDLINE))
                     scan();
                 addChild(complexTypeAST, sExpression(&expr));
-                while (isCurrentToken(ENDLINE))
-                    scan();
-                if (!isCurrentToken(CLOSEBRACE)) {
-                    expect(COLON);
+                if (!isCurrentToken(CLOSEBRACE)) {        
+                    if ((i % 2) == 0) {
+                        if (isCurrentToken(ENDLINE)) {
+                            while (isCurrentToken(ENDLINE))
+                                scan(); 
+                        }
+                        expect(COLON);
+                    } else {
+                        if (isCurrentToken(ENDLINE)) {
+                            while (isCurrentToken(ENDLINE))
+                                scan(); 
+                        } else expect(COMMA);
+                    }
                     i++;
                     continue;
                 }

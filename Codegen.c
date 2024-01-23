@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdbool.h>
 #include "Interpreter.h"
 #include "Context.h"
 #include "AST.h"
@@ -37,14 +38,15 @@ long programSize = 0;
 long programCapacity = 0;
 struct opCode * program;
 
-// Global context to declare functions
-extern struct Context* context;
-
 // Faux null union
 union TypeStore nullVal;
 
+bool onLVal;
+
 extern struct TokenStruct exprNoAssign;
 extern struct TokenStruct expr;
+// Global context to declare functions
+extern struct Context* context;
 
 ////////////////////////////////////////////////////////////////
 // CODEGEN HELPERS
@@ -89,6 +91,8 @@ char * opCodeStringMap (ByteCodeFunctionPtr fP) {
     else if (fP == &popClean) return "POPCLEAN";
     else if (fP == &unaryFlip) return "FLIPSIGN";
     else if (fP == &buildList) return "BUILDLIST";
+    else if (fP == &buildDict) return "BUILDDICT";
+    else if (fP == &sliceOp) return "SLICEOP";
     else return 0x0;
 }
 
@@ -169,9 +173,7 @@ struct opCode * codeGen(struct AST * aTree) {
     AST node
 
 */
-
-void breaker() {}
-
+void b(){}
 void codeGenWalker(struct AST * aTree) {
     if (aTree != NULL && aTree->token == NULL) {
         for (int i = 0 ; i < aTree->childCount ; i++)
@@ -196,7 +198,7 @@ void codeGenWalker(struct AST * aTree) {
             union TypeStore value;
             value.numValue = (double)aTree->childCount;
             programAdder(aTree, buildDict, value, NUMBER);    
-            break;
+            return;
             }
         case LIST: 
             {
@@ -246,11 +248,16 @@ void codeGenWalker(struct AST * aTree) {
             && aTree->children[0]->token->token != INDEXIDENT) {
                 union TypeStore value;
                 value.strValue = aTree->children[0]->token->lexeme;
-                programAdder(aTree, push, value, IDENTIFIER);
+                programAdder(aTree, push, value, IDENT);
                 i++;
             }
-            for (; i < aTree->childCount ; i++)
+            for (; i < aTree->childCount ; i++){
                 codeGenWalker(aTree->children[i]); 
+                if (aTree->token->token == ASSIGNMENT && i == 0)
+                    onLVal = true;
+                else 
+                    onLVal = false;
+            }
             union TypeStore value;
             value.opValue = aTree->token->token;
             programAdder(aTree, binOpCode, value, BINOP);

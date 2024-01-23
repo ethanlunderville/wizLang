@@ -246,19 +246,31 @@ void* binOpCode() {
             struct wizObject * temp = pop();
             struct wizObject * ident = pop();
             struct wizObject ** ref;
-            if (ident->type == CHARADDRESS) {
-                ident->value.strValue[0] = *(temp->value.strValue);
-                cleanWizObject(temp);
-                cleanWizObject(ident);
-                break;
+            switch (ident->type) {
+                case STRINGTYPE:
+                case NUMBER: 
+                {
+                    ident->value = temp->value;
+                    ident->type = temp->type;
+                    break;
+                }
+                case CHARADDRESS: 
+                {
+                    ident->value.strValue[0] = *(temp->value.strValue);
+                    break;
+                }
+                case IDENT: 
+                {
+                    ref = getObjectRefFromIdentifier(ident->value.strValue);
+                    if (ref == NULL)
+                        ref = declareSymbol(ident->value.strValue);
+                    else
+                        decRef(*ref);
+                    incRef(temp);
+                    *ref = temp;
+                    break;
+                }
             }
-            ref = getObjectRefFromIdentifier(ident->value.strValue);
-            if (ref == NULL)
-                ref = declareSymbol(ident->value.strValue);
-            else
-                decRef(*ref);
-            incRef(temp);
-            *ref = temp;
             cleanWizObject(temp);
             cleanWizObject(ident);
             break;
@@ -297,6 +309,34 @@ void* targetOffset() {
         int listSize = ((struct wizList*)continuosDataWiz)->size;
         if (index < 0) index = translateIndex(index, listSize);
         pushInternal(((struct wizObject*)continuosDataWiz)->value.listVal[index]);
+    } else if (continuosDataWiz->type == DICTIONARY) {
+        struct wizList* keys = ((struct wizDict*)continuosDataWiz)->keys;
+        struct wizList* values = ((struct wizDict*)continuosDataWiz)->values;
+        switch (offsetWiz->type) {
+            case STRINGTYPE: 
+            {
+            for (int i = 0 ; i < keys->size ; i++) {
+                if (keys->wizV.value.listVal[i]->type == STRINGTYPE && strcmp(keys->wizV.value.listVal[i]->value.strValue, offsetWiz->value.strValue) == 0){
+                    pushInternal(values->wizV.value.listVal[i]);
+                    break;
+                }
+            }
+            // If its not found
+            break;
+            }
+            case CHAR:
+            case CHARADDRESS:
+            case NUMBER:
+            {
+            for (int i = 0 ; i < keys->size ; i++) {
+                if (keys->wizV.value.listVal[i]->type == NUMBER && keys->wizV.value.listVal[i]->value.numValue == offsetWiz->value.numValue){
+                    pushInternal(values->wizV.value.listVal[i]);
+                    break;
+                }
+            }
+            break;    
+            }
+        }
     }
     cleanWizObject(offsetWiz);
     cleanWizObject(continuosDataWiz);
@@ -392,10 +432,16 @@ void * buildList() {
 }
 
 void * buildDict() {
-    int iterNum = ((int)fetchArg(instructionIndex))/2;
+    int iterNum = ((int)fetchArg(instructionIndex)->value.numValue)/2;
+    struct wizDict * dict;
+    struct wizList * keys = initList(LIST);
+    struct wizList * values = initList(LIST);
     for (int i = 0 ; i < iterNum ; i++) {
-        
+        appendToWizList(values, pop());
+        appendToWizList(keys, pop());
     }
+    dict = initDict(keys, values);
+    pushInternal((struct wizObject*)dict);
 }
 
 void * sliceOp() {

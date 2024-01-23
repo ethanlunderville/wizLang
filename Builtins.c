@@ -62,6 +62,13 @@ void* fEchoH() {
     printf("]");
     break;
     }
+    case DICTIONARY:
+    {
+    pushInternal((struct wizObject*)(((struct wizDict*)val)->keys));
+    fEcho();
+    pushInternal((struct wizObject*)(((struct wizDict*)val)->values));
+    fEcho();
+    }
     }
     cleanWizObject(val);
     pushInternal(&nullV);
@@ -100,6 +107,7 @@ void * fType(long lineNo) {
         case CHARADDRESS: ret->value.strValue = copyStr("CHAR"); break;
         case LIST: ret->value.strValue = copyStr("LIST"); break;
         case CHAR: ret->value.strValue = copyStr("CHAR"); break;
+        case DICTIONARY: ret->value.strValue = copyStr("DICTIONARY"); break;
     default:
         FATAL_ERROR(LANGUAGE, lineNo, "UNRECOGNIZED TYPE");
     }
