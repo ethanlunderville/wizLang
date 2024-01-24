@@ -88,6 +88,16 @@ void pushCounterStack(struct lineCounterStack* counterStack, long val) {
     counterStack->stackSize++;
 }
 
+long peekCounterStack(struct lineCounterStack* counterStack) {
+    if (counterStack->stackSize == 0)
+        FATAL_ERROR(
+            LANGUAGE, 
+            fetchCurrentLine(), 
+            "Empty Runtime Stack Was Peeked"
+        );
+    return counterStack->stack[counterStack->stackSize-1];
+}
+
 // Stack dumper for debugging.
 
 int dumpStack() {
@@ -97,6 +107,7 @@ int dumpStack() {
         if (stack[i] == NULL) 
             continue;
         switch (stack[i]->type) {
+        case IDENT:
         case STRINGTYPE:
             printf(
                 " %s\n", 
@@ -165,6 +176,18 @@ void* pushLookup() {
         ); 
     stack[stackSize] = *potentialLookup;
     stackSize++;
+}
+
+void jengaMomentLoL(int stackElementIndex) {
+    int copyAmmount = stackSize - stackElementIndex - 1;
+    cleanWizObject(stack[stackElementIndex]);
+    memcpy(
+        stack+stackElementIndex,
+        stack+stackElementIndex+1,
+        copyAmmount * sizeof (struct wizObject*)
+    );
+    stack[stackSize-1] = NULL;
+    stackSize--;
 }
 
 #define EQ_OP_EXECUTION_MACRO(op) \
@@ -243,7 +266,6 @@ void* binOpCode() {
             }
         case ASSIGNMENT: 
             {
-                b();
             struct wizObject * temp = pop();
             struct wizObject * ident = pop();
             struct wizObject ** ref;
@@ -445,6 +467,7 @@ void * jumpNe() {
 void * createStackFrame() { pushCounterStack(&stackFrames, stackSize); }
 
 void * call() {
+    //createStackFrame();
     char* functionName = fetchArg(instructionIndex)->value.strValue;
     BuiltInFunctionPtr potentialBuiltin = getBuiltin(functionName);
     if (potentialBuiltin != 0) {
@@ -459,10 +482,18 @@ void * call() {
     instructionIndex = ((long) (*potentialLineNo)->value.numValue) - 2;
 }
 
+void * lCall() {
+    long funct = ((long)(stack[peekCounterStack(&stackFrames)-1]->value.numValue)) - 2;
+    jengaMomentLoL(peekCounterStack(&stackFrames)-1);
+    //long funct = ((long)(pop()->value.numValue))-2;
+    pushCounterStack(&returnLines, instructionIndex);
+    instructionIndex = funct;
+}
+
 void * fReturn() {
     struct wizObject* retVal = pop();
     int stackSizeTarget = stackFrames.stack[stackFrames.stackSize - 1];
-    while (stackSize != stackSizeTarget) 
+    while (stackSize > stackSizeTarget) 
         cleanWizObject(pop());    
     popCounterStack(&stackFrames);
     instructionIndex = popCounterStack(&returnLines);
@@ -474,7 +505,7 @@ void * fReturn() {
 
 void * fReturnNoArg() {
     int stackSizeTarget = stackFrames.stack[stackFrames.stackSize - 1];
-    while (stackSize != stackSizeTarget)
+    while (stackSize > stackSizeTarget)
         cleanWizObject(pop());
     popCounterStack(&stackFrames);
     instructionIndex = popCounterStack(&returnLines);
@@ -482,7 +513,9 @@ void * fReturnNoArg() {
     pushInternal(&nullV);
 }
 
-void * popClean() { cleanWizObject(pop()); }
+void * popClean() { 
+    cleanWizObject(pop()); 
+}
 
 void * buildList() {
     struct wizList * list;
@@ -563,6 +596,7 @@ void * unaryFlip() {
 void interpret() {
     initNullV();
     while (instructionIndex < programSize) {
+        b();
         program[instructionIndex].associatedOperation();
         instructionIndex++;
 #ifdef DUMP_STACK

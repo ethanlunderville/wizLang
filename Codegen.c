@@ -94,6 +94,7 @@ char * opCodeStringMap (ByteCodeFunctionPtr fP) {
     else if (fP == &buildDict) return "BUILDDICT";
     else if (fP == &sliceOp) return "SLICEOP";
     else if (fP == &targetLValOffset) return "PUSHOFFSETL";
+    else if (fP == &lCall) return "LAMBDACALL";
     else return 0x0;
 }
 
@@ -135,6 +136,7 @@ void printOpCodes() {
         printf("%s", currStr);
         struct wizObject* arg = fetchArg(i);
         switch (arg->type) {
+            case IDENT:
             case IDENTIFIER:
             case STRINGTYPE: printf(
                 " %s", 
@@ -242,6 +244,7 @@ void codeGenWalker(struct AST * aTree) {
             }
         case BINOP:
             {
+            //b();
             if (aTree->token->token == DOTOP)
                 break;
             int i = 0;
@@ -253,9 +256,11 @@ void codeGenWalker(struct AST * aTree) {
                 i++;
             }
             for (; i < aTree->childCount ; i++){
-                if (aTree->token->token == ASSIGNMENT && i == 0) 
+                if (aTree->token->token == ASSIGNMENT && i == 0) {
                     onLVal = true;
-                else onLVal = false;
+                } else {
+                    onLVal = false;
+                }
                 codeGenWalker(aTree->children[i]); 
             }
             union TypeStore value;
@@ -324,7 +329,6 @@ void codeGenWalker(struct AST * aTree) {
         case LAMBDA:
         case DEF:
             {
-            //b();
             /*
             Create a wiz object that stores the current line
             as an argument so that when the function is called
@@ -332,7 +336,7 @@ void codeGenWalker(struct AST * aTree) {
             */
             struct wizObject * lineHolder = (struct wizObject *) malloc(sizeof(struct wizObject));
             lineHolder->type = NUMBER;
-            lineHolder->referenceCount = 1;
+            lineHolder->referenceCount = 1; 
             lineHolder->value.numValue = programSize + 2; // Add three to skip the jump
             // Declare the function with the function identifier
             if (aTree->token->token == DEF){
@@ -387,11 +391,55 @@ void codeGenWalker(struct AST * aTree) {
         case FUNCTIONCALLIDENT:
             {
             programAdder(aTree,createStackFrame, nullVal, -1);
-            for (int i = 0 ; i < aTree->childCount ; i++)
+            int traverseCount = aTree->childCount;
+            if (traverseCount > 0 && aTree->children[traverseCount-1]->token->token == LAMBDACALL) {
+                for (int i = 0 ; i < traverseCount - 1 ; i++)
+                    codeGenWalker(aTree->children[i]);
+                union TypeStore value;
+                value.strValue = aTree->token->lexeme;
+                programAdder(aTree, call, value, STRINGTYPE);
+                codeGenWalker(aTree->children[traverseCount-1]);
+                break;
+            } else if (traverseCount > 0 && aTree->children[traverseCount-1]->token->token == OPENBRACKET) {
+                for (int i = 0 ; i < traverseCount - 1 ; i++)
+                    codeGenWalker(aTree->children[i]);
+                union TypeStore value;
+                value.strValue = aTree->token->lexeme;
+                programAdder(aTree, call, value, STRINGTYPE);
+                codeGenWalker(aTree->children[traverseCount-1]);
+                break;
+            }
+            for (int i = 0 ; i < traverseCount ; i++)
                 codeGenWalker(aTree->children[i]);
             union TypeStore value;
             value.strValue = aTree->token->lexeme;
             programAdder(aTree, call, value, STRINGTYPE);
+            break;
+            }
+        case LAMBDACALL: 
+            {
+            programAdder(aTree,createStackFrame, nullVal, -1); 
+            int traverseCount = aTree->childCount;
+            union TypeStore value;
+            if (traverseCount > 0 && aTree->children[traverseCount-1]->children[0]->token->token == LAMBDACALL) {
+                for (int i = 0 ; i < traverseCount - 1 ; i++)
+                    codeGenWalker(aTree->children[i]);
+                value.strValue = aTree->token->lexeme;
+                programAdder(aTree, lCall, value, STRINGTYPE);
+                codeGenWalker(aTree->children[traverseCount-1]);
+                break;
+            } else if (traverseCount > 0 && aTree->children[traverseCount-1]->token->token == OPENBRACKET) {
+                for (int i = 0 ; i < traverseCount - 1 ; i++)
+                    codeGenWalker(aTree->children[i]);
+                value.strValue = aTree->token->lexeme;
+                programAdder(aTree, lCall, value, STRINGTYPE);
+                codeGenWalker(aTree->children[traverseCount-1]);
+                break;
+            }
+            for (int i = 0 ; i < traverseCount ; i++)
+                codeGenWalker(aTree->children[i]);
+            value.strValue = aTree->token->lexeme;
+            programAdder(aTree, lCall, value, STRINGTYPE);
             break;
             }
         case INDEXIDENT:

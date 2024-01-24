@@ -91,6 +91,7 @@ void* createStackFrame();
 void* fReturnNoArg();
 void* fReturn();
 void* call();
+void* lCall();
 void* fAssign();
 void* push();
 void* binOpCode();

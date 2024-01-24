@@ -68,6 +68,7 @@ enum Tokens {
     OPENBRACE,
     CLOSEBRACE,
     LAMBDA,
+    LAMBDACALL,
 
     DEF,
     RETURN,

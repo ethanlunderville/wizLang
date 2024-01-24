@@ -1,3 +1,5 @@
-list = [() => { return 5 } , 5]
+f = () => {
+    return (i,j,k) => {return i+j+k}
+}
 
-echo(list[0]())
+echo(f()(3,3,4))

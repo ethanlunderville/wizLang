@@ -107,6 +107,7 @@ const char* getTokenName(enum Tokens token) {
         case CLOSEBRACKET: return "CLOSEBRACKET";
         case COLON: return "COLON";
         case ENDOFFILE: return "ENDOFFILE";
+        case LAMBDACALL: return "LAMBDACALL";
         default: return "UNKNOWN";
     }
 }
@@ -442,8 +443,24 @@ void freeProgramList(struct TokenStruct * programList, long size) {
 
 // Parses every type of identifier
 
+struct TokenStruct lam;
+
 struct AST* sFunctionCallLambda() {
-    
+    struct AST * lTree = initAST(getCurrentTokenStruct());
+    lTree->token->token  =LAMBDACALL;
+    scan();
+    while (!isCurrentToken(RIGHTPARENTH)) {
+        addChild(lTree, sExpression(&expr));        
+        if (!isCurrentToken(RIGHTPARENTH)) 
+            expect(COMMA);
+    }
+    scan();
+    if (isCurrentToken(LEFTPARENTH)) {
+        addChild(lTree, sFunctionCallLambda());
+    } else if (isCurrentToken(OPENBRACKET)) {
+        addChild(lTree, sSubScriptTree());
+    }
+    return lTree;
 }
 
 struct AST* sSubScriptTree() {
@@ -477,6 +494,10 @@ struct AST* sIdentTree() {
                     expect(COMMA);
             }
             scan();
+            if (isCurrentToken(LEFTPARENTH))
+                addChild(identTree, sFunctionCallLambda());
+            else if (isCurrentToken(OPENBRACKET))
+                addChild(identTree, sSubScriptTree());
             break;
             }
         case OPENBRACKET:
@@ -722,6 +743,7 @@ void initParserData() {
     expr.token = BEGINOPERATORS;
     exprNoAssign.token = BEGINOPERATORS;
     lambda.token = LAMBDA;
+    lam.token = LAMBDACALL;
 }
 
 struct AST* parse() {
@@ -997,7 +1019,6 @@ struct AST* sOperand(struct ASTStack * operandStack, int parseUn) {
     } else if (isCurrentToken(LEFTPARENTH)){
         if (checkLambda()) {
             pushTree = sLambda();
-            b();
         } else {
             scan();
             pushTree = sExpression(&expr);
