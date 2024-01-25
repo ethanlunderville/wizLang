@@ -120,7 +120,11 @@ void interpret();
 // Helpers
 int floatStrContainsDecimal(char * str);
 int removeZerosFromDoubleString(char * str);
+
 void plusOp();
+void assignOp();
+void powerOp();
+void jengaMomentLoL();
 
 const char* getTypeString(enum Types type);
 #endif

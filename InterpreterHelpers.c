@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include "Interpreter.h"
 
 extern struct opCode * program;
@@ -22,18 +23,6 @@ void initNullV() {
     nullV.referenceCount = -1;
     nullV.type = NUMBER;
     nullV.value.numValue = 0;  
-}
-
-void jengaMomentLoL(int stackElementIndex) {
-    int copyAmmount = stackSize - stackElementIndex - 1;
-    cleanWizObject(stack[stackElementIndex]);
-    memcpy(
-        stack+stackElementIndex,
-        stack+stackElementIndex+1,
-        copyAmmount * sizeof (struct wizObject*)
-    );
-    stack[stackSize-1] = NULL;
-    stackSize--;
 }
 
 void cleanWizObject(struct wizObject* wiz) {
@@ -119,47 +108,6 @@ const char* getTypeString(enum Types type) {
         case NONE: return "NONE";
         default: return "Invalid enum value";
     }
-}
-
-/*
-
-    Handles how to the + operator behaves depending on
-    the type of its operands
-
-*/
-
-void assignOp() {
-    struct wizObject * temp = pop();
-    struct wizObject * ident = pop();
-    struct wizObject ** ref;
-    switch (ident->type) {
-        case WIZOBJECTPOINTER:
-        {
-        ref = ident->value.ptrVal;
-        decRef(*ref);
-        *ref = temp;
-        incRef(temp);
-        break;
-        }
-        case CHARADDRESS: 
-        {
-        ident->value.strValue[0] = *(temp->value.strValue);
-        break;
-        }
-        case IDENT: 
-        {
-        ref = getObjectRefFromIdentifier(ident->value.strValue);
-        if (ref == NULL)
-            ref = declareSymbol(ident->value.strValue);
-        else
-            decRef(*ref);
-        incRef(temp);
-        *ref = temp;
-        break;
-        }
-    }
-    cleanWizObject(temp);
-    cleanWizObject(ident);
 }
 
 void powerOp() {

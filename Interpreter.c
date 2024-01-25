@@ -129,6 +129,18 @@ int dumpStack() {
     
 }
 
+void jengaMomentLoL(int stackElementIndex) {
+    int copyAmmount = stackSize - stackElementIndex - 1;
+    cleanWizObject(stack[stackElementIndex]);
+    memcpy(
+        stack+stackElementIndex,
+        stack+stackElementIndex+1,
+        copyAmmount * sizeof (struct wizObject*)
+    );
+    stack[stackSize-1] = NULL;
+    stackSize--;
+}
+
 // Pops a value off of the Runtime Stack.
 
 struct wizObject* pop() {
@@ -230,7 +242,40 @@ void* binOpCode() {
         case PIPE: break;
         case ADD: plusOp(); break;
         case POWER: powerOp(); break;
-        case ASSIGNMENT: assignOp(); break;
+        case ASSIGNMENT: {
+            struct wizObject * temp = pop();
+            struct wizObject * ident = pop();
+            struct wizObject ** ref;
+            switch (ident->type) {
+                case WIZOBJECTPOINTER:
+                {
+                ref = ident->value.ptrVal;
+                decRef(*ref);
+                *ref = temp;
+                incRef(temp);
+                break;
+                }
+                case CHARADDRESS: 
+                {
+                ident->value.strValue[0] = *(temp->value.strValue);
+                break;
+                }
+                case IDENT: 
+                {
+                ref = getObjectRefFromIdentifier(ident->value.strValue);
+                if (ref == NULL)
+                    ref = declareSymbol(ident->value.strValue);
+                else
+                    decRef(*ref);
+                incRef(temp);
+                *ref = temp;
+                break;
+                }
+            }
+            cleanWizObject(temp);
+            cleanWizObject(ident);
+            break;
+            }
         case NOTEQUAL: EQ_OP_EXECUTION_MACRO(!=);
         case EQUAL: EQ_OP_EXECUTION_MACRO(==);
         case SUBTRACT: OP_EXECUTION_MACRO(-);
