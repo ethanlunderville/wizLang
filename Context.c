@@ -28,6 +28,7 @@
 
 extern struct Context* context;
 struct Context* globalContext;
+extern struct wizObject nullV;
 
 void initGlobalContext() {
     globalContext = initContext();
@@ -55,7 +56,7 @@ void* pushScope() {
 
 void* popScope(struct wizObject* retVal) {
     for (int i = 0 ; i < context->currentIndex ; i++) {
-        if (retVal == NULL || retVal != context->map[i].value) 
+        if (retVal == &nullV || retVal == NULL || retVal != context->map[i].value) 
             decRef(context->map[i].value);
         else if (retVal->referenceCount != -1)
                 retVal->referenceCount--;

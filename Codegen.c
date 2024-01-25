@@ -176,11 +176,19 @@ struct opCode * codeGen(struct AST * aTree) {
     AST node
 
 */
-void b(){}
+
+void traverseChildren(struct AST * aTree) {
+    for (int i = 0 ; i < aTree->childCount ; i++)
+        codeGenWalker(aTree->children[i]);
+}
+
+enum Tokens getToken(struct AST * aTree) {
+    return aTree->token->token;
+}
+
 void codeGenWalker(struct AST * aTree) {
     if (aTree != NULL && aTree->token == NULL) {
-        for (int i = 0 ; i < aTree->childCount ; i++)
-            codeGenWalker(aTree->children[i]);
+        traverseChildren(aTree);
         return;
     }
     switch (aTree->token->type) {
@@ -188,16 +196,14 @@ void codeGenWalker(struct AST * aTree) {
         case EXPRESSION_NOASSIGN: 
         case EXPRESSION:
             {
-            for (int i = 0 ; i < aTree->childCount ; i++)
-                codeGenWalker(aTree->children[i]);
+            traverseChildren(aTree);
             if (aTree->token->type == EXPRESSION_NOASSIGN)
                 programAdder(aTree, popClean, nullVal, -1);
             break;
             }
         case DICTIONARY:
             {
-            for (int i = 0 ; i < aTree->childCount ; i++)
-                codeGenWalker(aTree->children[i]);
+            traverseChildren(aTree);
             union TypeStore value;
             value.numValue = (double)aTree->childCount;
             programAdder(aTree, buildDict, value, NUMBER);    
@@ -231,45 +237,43 @@ void codeGenWalker(struct AST * aTree) {
             union TypeStore value;
             value.strValue = aTree->token->lexeme;
             long index = programAdder(aTree, push, value, STRINGTYPE);
-            ((struct wizList*)fetchArg(index))->size = strlen(value.strValue);
-            ((struct wizList*)fetchArg(index))->capacity = strlen(value.strValue);
+            struct wizList* list = (struct wizList*)fetchArg(index);
+            list->size = strlen(value.strValue);
+            list->capacity = strlen(value.strValue);
             break;
             }
         case UNARY:
             {
-            for (int i = 0 ; i < aTree->childCount ; i++)
-                codeGenWalker(aTree->children[i]);
+            traverseChildren(aTree);
             programAdder(aTree, unaryFlip , nullVal,-1);
             break;
             }
         case BINOP:
             {
-            //b();
-            if (aTree->token->token == DOTOP)
+            // There is a more specific way to handle the  
+            // dot operator in the switch statement below
+            union TypeStore value;
+            if (getToken(aTree) == DOTOP) 
                 break;
             int i = 0;
-            if (aTree->token->token == ASSIGNMENT 
-            && aTree->children[0]->token->token != INDEXIDENT) {
-                union TypeStore value;
+            if (getToken(aTree) == ASSIGNMENT && getToken(aTree->children[0]) != INDEXIDENT) {
                 value.strValue = aTree->children[0]->token->lexeme;
                 programAdder(aTree, push, value, IDENT);
                 i++;
             }
-            for (; i < aTree->childCount ; i++){
-                if (aTree->token->token == ASSIGNMENT && i == 0) {
+            while (i < aTree->childCount){
+                if (getToken(aTree) == ASSIGNMENT && i == 0)
                     onLVal = true;
-                } else {
+                else
                     onLVal = false;
-                }
                 codeGenWalker(aTree->children[i]); 
+                i++;
             }
-            union TypeStore value;
-            value.opValue = aTree->token->token;
+            value.opValue = getToken(aTree);
             programAdder(aTree, binOpCode, value, BINOP);
             break;
             }
-        default:
-            break;
+        default: break;
     }
     switch (aTree->token->token) {
         case IF:
@@ -322,8 +326,7 @@ void codeGenWalker(struct AST * aTree) {
             }
         case OPENBRACE:
             {   
-            for (int i = 0 ; i < aTree->childCount ; i++)
-                codeGenWalker(aTree->children[i]);
+            traverseChildren(aTree);
             break;
             }
         case LAMBDA:
@@ -360,8 +363,7 @@ void codeGenWalker(struct AST * aTree) {
                 programAdder(aTree,fAssign, value, BINOP);
             }
             // Process related code block
-            for (int i = 0; i < aTree->children[0]->children[aTree->children[0]->childCount - 1]->childCount;i++)
-                codeGenWalker(aTree->children[0]->children[aTree->children[0]->childCount - 1]->children[i]);
+            traverseChildren(aTree->children[0]->children[aTree->children[0]->childCount - 1]);
             programAdder(aTree,fReturnNoArg, nullVal, -1);
             // Update unconditional jump location
             fetchArg(op)->value.numValue = programSize + 1;
@@ -392,26 +394,18 @@ void codeGenWalker(struct AST * aTree) {
             {
             programAdder(aTree,createStackFrame, nullVal, -1);
             int traverseCount = aTree->childCount;
-            if (traverseCount > 0 && aTree->children[traverseCount-1]->token->token == LAMBDACALL) {
+            union TypeStore value;
+            if (traverseCount > 0
+            && (getToken(aTree->children[traverseCount-1]) == LAMBDACALL 
+            || getToken(aTree->children[traverseCount-1]) == OPENBRACKET)) {
                 for (int i = 0 ; i < traverseCount - 1 ; i++)
                     codeGenWalker(aTree->children[i]);
-                union TypeStore value;
-                value.strValue = aTree->token->lexeme;
-                programAdder(aTree, call, value, STRINGTYPE);
-                codeGenWalker(aTree->children[traverseCount-1]);
-                break;
-            } else if (traverseCount > 0 && aTree->children[traverseCount-1]->token->token == OPENBRACKET) {
-                for (int i = 0 ; i < traverseCount - 1 ; i++)
-                    codeGenWalker(aTree->children[i]);
-                union TypeStore value;
                 value.strValue = aTree->token->lexeme;
                 programAdder(aTree, call, value, STRINGTYPE);
                 codeGenWalker(aTree->children[traverseCount-1]);
                 break;
             }
-            for (int i = 0 ; i < traverseCount ; i++)
-                codeGenWalker(aTree->children[i]);
-            union TypeStore value;
+            traverseChildren(aTree);
             value.strValue = aTree->token->lexeme;
             programAdder(aTree, call, value, STRINGTYPE);
             break;
@@ -421,14 +415,9 @@ void codeGenWalker(struct AST * aTree) {
             programAdder(aTree,createStackFrame, nullVal, -1); 
             int traverseCount = aTree->childCount;
             union TypeStore value;
-            if (traverseCount > 0 && aTree->children[traverseCount-1]->children[0]->token->token == LAMBDACALL) {
-                for (int i = 0 ; i < traverseCount - 1 ; i++)
-                    codeGenWalker(aTree->children[i]);
-                value.strValue = aTree->token->lexeme;
-                programAdder(aTree, lCall, value, STRINGTYPE);
-                codeGenWalker(aTree->children[traverseCount-1]);
-                break;
-            } else if (traverseCount > 0 && aTree->children[traverseCount-1]->token->token == OPENBRACKET) {
+            if (traverseCount > 0 
+            && (getToken(aTree->children[traverseCount-1]) == OPENBRACKET 
+            || getToken(aTree->children[traverseCount-1]->children[0]) == LAMBDACALL)) {
                 for (int i = 0 ; i < traverseCount - 1 ; i++)
                     codeGenWalker(aTree->children[i]);
                 value.strValue = aTree->token->lexeme;
@@ -436,8 +425,7 @@ void codeGenWalker(struct AST * aTree) {
                 codeGenWalker(aTree->children[traverseCount-1]);
                 break;
             }
-            for (int i = 0 ; i < traverseCount ; i++)
-                codeGenWalker(aTree->children[i]);
+            traverseChildren(aTree);
             value.strValue = aTree->token->lexeme;
             programAdder(aTree, lCall, value, STRINGTYPE);
             break;
@@ -453,11 +441,10 @@ void codeGenWalker(struct AST * aTree) {
         case OPENBRACKET:
             {
             codeGenWalker(aTree->children[0]);
-            if (onLVal && aTree->childCount == 1) {
+            if (onLVal && aTree->childCount == 1)
                 programAdder(aTree, targetLValOffset, nullVal, -1);
-            } else {
+            else 
                 programAdder(aTree, targetOffset, nullVal, -1);
-            }
             if (aTree->childCount > 1)
                 codeGenWalker(aTree->children[1]);
             break;
@@ -474,12 +461,11 @@ void codeGenWalker(struct AST * aTree) {
             }
         case COLON:
             {
-            for (int i = 0 ; i < aTree->childCount ; i++)
-                codeGenWalker(aTree->children[i]);
+            traverseChildren(aTree);
             programAdder(aTree,sliceOp, nullVal, -1);
             break;
             }
-        default: break;
+        default: 
+            break;
     }
-    return;
 }

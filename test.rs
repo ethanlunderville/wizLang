@@ -1,5 +1,9 @@
-f = () => {
-    return (i,j,k) => {return i+j+k}
+opMap = {
+    "+" : (x,y) => { return x + y }
+    "-" : (x,y) => { return x - y }
+    "*" : (x,y) => { return x * y }
+    "/" : (x,y) => { return x / y }
 }
 
-echo(f()(3,3,4))
+echo("LAMBDA MAP TEST")
+echo("\nEXPECT 30 :: " + opMap["+"](20,10))

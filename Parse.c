@@ -34,11 +34,18 @@ long programListCapacity = BASE_PROGRAM_LIST_SIZE;
  NEEDS CLEANING AFTER EXPRESSION IS EVALUATED  */
 struct TokenStruct exprNoAssign;
 struct TokenStruct expr;
-struct TokenStruct lambda;
 
 ////////////////////////////////////////////////////////////////
 // LEXING RELATED FUNCTIONS
 ////////////////////////////////////////////////////////////////
+
+void initParserData() {
+    currentProgramListCounter = 0;
+    expr.type = EXPRESSION;
+    exprNoAssign.type = EXPRESSION_NOASSIGN;
+    expr.token = BEGINOPERATORS;
+    exprNoAssign.token = BEGINOPERATORS;
+}
 
 // Supports lex when mapping the string representation of keywords to their Tokens.
 
@@ -284,7 +291,6 @@ void lex(char* buffer, struct TokenStruct * programList) {
                 addToProgramList("!=",BINOP,lineNo,NOTEQUAL);
             } else {
                 addToProgramList("!", BINOP, lineNo ,SUBTRACT); 
-            //    FATAL_ERROR(PARSE, lineNo, "Expected = after !");
             }
             break;
         }
@@ -353,17 +359,6 @@ void lex(char* buffer, struct TokenStruct * programList) {
             } 
             addToProgramList(alphaLex, NONE, lineNo ,IDENTIFIER);
             i++;
-            /*
-                Expansion of ++ and -- operators.
-
-                The copyStr function is called since this is an
-                expansion. Normally when the the deallocation
-                stage looks at the number and alpha numeric
-                lexemes it frees them so they need to be on the
-                heap. If i did not copy the string to a heap
-                allocated version it would essentially be trying
-                to free static memory.
-            */
             if (buffer[i] == '+' && checkNext(buffer,i,'+')) {
                 addToProgramList("=", BINOP, lineNo, ASSIGNMENT);
                 addToProgramList(copyStr(alphaLex), NONE, lineNo ,IDENTIFIER);
@@ -413,13 +408,11 @@ void printLexemes (struct TokenStruct * programList, long size) {
 }
 
 bool onFreeableType(enum Tokens token) {
-    return (
-         token == STRING
+    return (token == STRING
        ||token == NUM
        ||token == IDENTIFIER
        ||token == FUNCTIONCALLIDENT
-       ||token == INDEXIDENT
-    );
+       ||token == INDEXIDENT);
 }
 
 // Frees tokens of the program.
@@ -443,11 +436,9 @@ void freeProgramList(struct TokenStruct * programList, long size) {
 
 // Parses every type of identifier
 
-struct TokenStruct lam;
-
 struct AST* sFunctionCallLambda() {
     struct AST * lTree = initAST(getCurrentTokenStruct());
-    lTree->token->token  =LAMBDACALL;
+    lTree->token->token = LAMBDACALL;
     scan();
     while (!isCurrentToken(RIGHTPARENTH)) {
         addChild(lTree, sExpression(&expr));        
@@ -625,6 +616,11 @@ struct AST* sConditional() {
     return condTree;
 } 
 
+void skipLines() {
+    while (isCurrentToken(ENDLINE)) 
+        scan();
+}
+
 struct AST* sComplexType() {
     struct AST * complexTypeAST = initAST(getCurrentTokenStruct());
     switch (getCurrentTokenStruct()->token) {
@@ -634,23 +630,21 @@ struct AST* sComplexType() {
             scan();
             int i = 0;
             while (!isCurrentToken(CLOSEBRACE)) {
-                while (isCurrentToken(ENDLINE))
-                    scan();
+                skipLines();
                 addChild(complexTypeAST, sExpression(&expr));
-                if (!isCurrentToken(CLOSEBRACE)) {        
-                    if ((i % 2) == 0) {
-                        while (isCurrentToken(ENDLINE))
-                            scan(); 
-                        expect(COLON);
-                    } else {
-                        if (isCurrentToken(ENDLINE)) {
-                            while (isCurrentToken(ENDLINE))
-                                scan(); 
-                        } else expect(COMMA);
-                    }
-                    i++;
+                if (isCurrentToken(CLOSEBRACE))
                     continue;
+                if ((i % 2) == 0) {
+                    skipLines();
+                    expect(COLON);
+                } else {
+                    if (isCurrentToken(ENDLINE)) {
+                        skipLines(); 
+                    } else {
+                        expect(COMMA);
+                    }
                 }
+                i++;
             }
             scan();
             if (complexTypeAST->childCount % 2 != 0)
@@ -735,16 +729,6 @@ struct AST * sLambda() {
     Abstract Syntax Tree for the codegen stage.
 
 */
-
-void initParserData() {
-    currentProgramListCounter = 0;
-    expr.type = EXPRESSION;
-    exprNoAssign.type = EXPRESSION_NOASSIGN;
-    expr.token = BEGINOPERATORS;
-    exprNoAssign.token = BEGINOPERATORS;
-    lambda.token = LAMBDA;
-    lam.token = LAMBDACALL;
-}
 
 struct AST* parse() {
     initParserData();
@@ -837,8 +821,7 @@ bool onData() {
         return false;
     if (isCurrentToken(NUM) 
      || isCurrentToken(STRING) 
-     || isCurrentToken(CHARACTER_LITERAL)
-     )
+     || isCurrentToken(CHARACTER_LITERAL)) 
         return true;
     return false;
 }
@@ -846,11 +829,10 @@ bool onData() {
 // Parser utility
 
 bool onConditionalToken() {
-    if ( isCurrentToken(IF)
+    return (isCurrentToken(IF)
        ||isCurrentToken(WHILE)
        ||isCurrentToken(FOR)
-    ) return true;
-    return false;
+    );
 }
 
 bool onUnary() {
@@ -860,7 +842,7 @@ bool onUnary() {
 // Parser ulility
 
 bool onExpressionBreaker() {
-    if ( isCurrentToken(ENDLINE)
+    return (isCurrentToken(ENDLINE)
        ||isCurrentToken(ENDOFFILE)
        ||isCurrentToken(RIGHTPARENTH)
        ||isCurrentToken(COMMA)
@@ -868,8 +850,7 @@ bool onExpressionBreaker() {
        ||isCurrentToken(CLOSEBRACE)
        ||isCurrentToken(SEMICOLON)
        ||isCurrentToken(COLON)
-    ) return true;
-    return false;
+    );
 }
 
 // Parser utility

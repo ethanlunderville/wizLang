@@ -6,5 +6,5 @@ BuiltInFunctionPtr getBuiltin();
 void* fEcho();
 void* fSize();
 void* fAppend();
-void *fType();
+void* fType();
 #endif

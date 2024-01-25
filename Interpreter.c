@@ -178,18 +178,6 @@ void* pushLookup() {
     stackSize++;
 }
 
-void jengaMomentLoL(int stackElementIndex) {
-    int copyAmmount = stackSize - stackElementIndex - 1;
-    cleanWizObject(stack[stackElementIndex]);
-    memcpy(
-        stack+stackElementIndex,
-        stack+stackElementIndex+1,
-        copyAmmount * sizeof (struct wizObject*)
-    );
-    stack[stackSize-1] = NULL;
-    stackSize--;
-}
-
 #define EQ_OP_EXECUTION_MACRO(op) \
     { \
     struct wizObject* rWiz = pop(); \
@@ -239,70 +227,10 @@ void jengaMomentLoL(int stackElementIndex) {
 void* binOpCode() {
     enum Tokens operation = fetchArg(instructionIndex)->value.opValue;
     switch (operation) {
-        case ADD: 
-            {   
-            struct wizObject* val2 = pop();
-            struct wizObject* val1 = pop();
-            struct wizObject* wizInplace = initWizObject(NUMBER);
-            processPlusOperator(val1, val2, wizInplace);
-            cleanWizObject(val1);
-            cleanWizObject(val2); 
-            break;
-            }
-        case POWER:
-            {
-            double rightHand;
-            struct wizObject* wizInplace = initWizObject(NUMBER);
-            union TypeStore temp;
-            struct wizObject * rWiz = pop();
-            rightHand = rWiz->value.numValue;
-            struct wizObject * lWiz = pop();
-            temp.numValue = pow(lWiz->value.numValue, rightHand);
-            wizInplace->value = temp;
-            pushInternal(wizInplace);
-            cleanWizObject(lWiz);
-            cleanWizObject(rWiz);
-            break;
-            }
-        case ASSIGNMENT: 
-            {
-            struct wizObject * temp = pop();
-            struct wizObject * ident = pop();
-            struct wizObject ** ref;
-            switch (ident->type) {
-                case WIZOBJECTPOINTER:
-                {
-                ref = ident->value.ptrVal;
-                decRef(*ref);
-                *ref = temp;
-                incRef(temp);
-                break;
-                }
-                case CHARADDRESS: 
-                {
-                ident->value.strValue[0] = *(temp->value.strValue);
-                break;
-                }
-                case IDENT: 
-                {
-                ref = getObjectRefFromIdentifier(ident->value.strValue);
-                if (ref == NULL)
-                    ref = declareSymbol(ident->value.strValue);
-                else
-                    decRef(*ref);
-                incRef(temp);
-                *ref = temp;
-                break;
-                }
-            }
-            cleanWizObject(temp);
-            cleanWizObject(ident);
-            break;
-            }
-        case PIPE: 
-            {
-            break;
-            };
+        case PIPE: break;
+        case ADD: plusOp(); break;
+        case POWER: powerOp(); break;
+        case ASSIGNMENT: assignOp(); break;
         case NOTEQUAL: EQ_OP_EXECUTION_MACRO(!=);
         case EQUAL: EQ_OP_EXECUTION_MACRO(==);
         case SUBTRACT: OP_EXECUTION_MACRO(-);
@@ -340,7 +268,8 @@ void* targetOffset() {
             case STRINGTYPE: 
             {
             for (int i = 0 ; i < keys->size ; i++) {
-                if (keys->wizV.value.listVal[i]->type == STRINGTYPE && strcmp(keys->wizV.value.listVal[i]->value.strValue, offsetWiz->value.strValue) == 0){
+                if (keys->wizV.value.listVal[i]->type == STRINGTYPE 
+                && strcmp(keys->wizV.value.listVal[i]->value.strValue, offsetWiz->value.strValue) == 0){
                     pushInternal(values->wizV.value.listVal[i]);
                     return NULL;
                 }
@@ -353,7 +282,8 @@ void* targetOffset() {
             case NUMBER:
             {
             for (int i = 0 ; i < keys->size ; i++) {
-                if (keys->wizV.value.listVal[i]->type == NUMBER && keys->wizV.value.listVal[i]->value.numValue == offsetWiz->value.numValue){
+                if (keys->wizV.value.listVal[i]->type == NUMBER 
+                && keys->wizV.value.listVal[i]->value.numValue == offsetWiz->value.numValue){
                     pushInternal(values->wizV.value.listVal[i]);
                     return NULL;
                 }
@@ -390,19 +320,14 @@ void* targetLValOffset() {
             case STRINGTYPE: 
             {
             for (int i = 0 ; i < keys->size ; i++) {
-                if (keys->wizV.value.listVal[i]->type == STRINGTYPE && strcmp(keys->wizV.value.listVal[i]->value.strValue, offsetWiz->value.strValue) == 0){
+                if (keys->wizV.value.listVal[i]->type == STRINGTYPE 
+                && strcmp(keys->wizV.value.listVal[i]->value.strValue, offsetWiz->value.strValue) == 0){
                     struct wizObject * ptr = initWizObject(WIZOBJECTPOINTER);
                     ptr->value.ptrVal = &(values->wizV.value.listVal[i]);
                     pushInternal(ptr);
                     return NULL;
                 }
             }
-            appendToWizList(keys, offsetWiz);
-            struct wizObject* wizTempNull = &nullV;//initWizObject(NULLP);
-            appendToWizList(values, wizTempNull);
-            struct wizObject* ptr = initWizObject(WIZOBJECTPOINTER);
-            ptr->value.ptrVal = &(values->wizV.value.listVal[values->size - 1]);
-            pushInternal(ptr);
             break;
             }
             case CHAR:
@@ -410,22 +335,23 @@ void* targetLValOffset() {
             case NUMBER:
             {
             for (int i = 0 ; i < keys->size ; i++) {
-                if (keys->wizV.value.listVal[i]->type == NUMBER && keys->wizV.value.listVal[i]->value.numValue == offsetWiz->value.numValue){
+                if (keys->wizV.value.listVal[i]->type == NUMBER 
+                && keys->wizV.value.listVal[i]->value.numValue == offsetWiz->value.numValue){
                     struct wizObject * ptr = initWizObject(WIZOBJECTPOINTER);
                     ptr->value.ptrVal = &(values->wizV.value.listVal[i]);
                     pushInternal(ptr);
                     return NULL;
                 }
             }
-            appendToWizList(keys, offsetWiz);
-            struct wizObject* wizTempNull = &nullV;//initWizObject(NULLP);
-            appendToWizList(values, wizTempNull);
-            struct wizObject* ptr = initWizObject(WIZOBJECTPOINTER);
-            ptr->value.ptrVal = &(values->wizV.value.listVal[values->size - 1]);
-            pushInternal(ptr);
             break;   
             }
         }
+        appendToWizList(keys, offsetWiz);
+        struct wizObject* wizTempNull = &nullV;
+        appendToWizList(values, wizTempNull);
+        struct wizObject* ptr = initWizObject(WIZOBJECTPOINTER);
+        ptr->value.ptrVal = &(values->wizV.value.listVal[values->size - 1]);
+        pushInternal(ptr);
     }
     cleanWizObject(offsetWiz);
     cleanWizObject(continuosDataWiz);
@@ -467,7 +393,6 @@ void * jumpNe() {
 void * createStackFrame() { pushCounterStack(&stackFrames, stackSize); }
 
 void * call() {
-    //createStackFrame();
     char* functionName = fetchArg(instructionIndex)->value.strValue;
     BuiltInFunctionPtr potentialBuiltin = getBuiltin(functionName);
     if (potentialBuiltin != 0) {
@@ -485,9 +410,17 @@ void * call() {
 void * lCall() {
     long funct = ((long)(stack[peekCounterStack(&stackFrames)-1]->value.numValue)) - 2;
     jengaMomentLoL(peekCounterStack(&stackFrames)-1);
-    //long funct = ((long)(pop()->value.numValue))-2;
     pushCounterStack(&returnLines, instructionIndex);
     instructionIndex = funct;
+}
+
+void * pScope() {
+    struct wizObject* retVal = pop();
+    if (retVal == &nullV)
+        popScope(NULL); 
+    else 
+        popScope(retVal);
+    pushInternal(retVal);
 }
 
 void * fReturn() {
@@ -596,7 +529,6 @@ void * unaryFlip() {
 void interpret() {
     initNullV();
     while (instructionIndex < programSize) {
-        b();
         program[instructionIndex].associatedOperation();
         instructionIndex++;
 #ifdef DUMP_STACK

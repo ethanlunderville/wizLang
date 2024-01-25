@@ -24,6 +24,18 @@ void initNullV() {
     nullV.value.numValue = 0;  
 }
 
+void jengaMomentLoL(int stackElementIndex) {
+    int copyAmmount = stackSize - stackElementIndex - 1;
+    cleanWizObject(stack[stackElementIndex]);
+    memcpy(
+        stack+stackElementIndex,
+        stack+stackElementIndex+1,
+        copyAmmount * sizeof (struct wizObject*)
+    );
+    stack[stackSize-1] = NULL;
+    stackSize--;
+}
+
 void cleanWizObject(struct wizObject* wiz) {
     if (wiz->referenceCount != 0)
         return;
@@ -72,9 +84,14 @@ int translateIndex(int index, int size) {
 
 int removeZerosFromDoubleString(char * str) {
     for (int i = strlen(str) - 1 ; i > -1 ; i--) {
-        if (str[i] != '0' && str[i] != '.') 
+        if (str[i] == '0') {
+            str[i] = '\0';    
+        } else if (str[i] == '.') {
+            str[i] = '\0';
             break;
-        str[i] = '\0';        
+        } else {
+            break;
+        }     
     }
     return strlen(str);
 }
@@ -111,11 +128,58 @@ const char* getTypeString(enum Types type) {
 
 */
 
-void processPlusOperator(
-    struct wizObject* val1,
-    struct wizObject* val2,
-    struct wizObject* opArgRef
-) {
+void assignOp() {
+    struct wizObject * temp = pop();
+    struct wizObject * ident = pop();
+    struct wizObject ** ref;
+    switch (ident->type) {
+        case WIZOBJECTPOINTER:
+        {
+        ref = ident->value.ptrVal;
+        decRef(*ref);
+        *ref = temp;
+        incRef(temp);
+        break;
+        }
+        case CHARADDRESS: 
+        {
+        ident->value.strValue[0] = *(temp->value.strValue);
+        break;
+        }
+        case IDENT: 
+        {
+        ref = getObjectRefFromIdentifier(ident->value.strValue);
+        if (ref == NULL)
+            ref = declareSymbol(ident->value.strValue);
+        else
+            decRef(*ref);
+        incRef(temp);
+        *ref = temp;
+        break;
+        }
+    }
+    cleanWizObject(temp);
+    cleanWizObject(ident);
+}
+
+void powerOp() {
+    double rightHand;
+    struct wizObject* wizInplace = initWizObject(NUMBER);
+    union TypeStore temp;
+    struct wizObject * rWiz = pop();
+    rightHand = rWiz->value.numValue;
+    struct wizObject * lWiz = pop();
+    temp.numValue = pow(lWiz->value.numValue, rightHand);
+    wizInplace->value = temp;
+    pushInternal(wizInplace);
+    cleanWizObject(lWiz);
+    cleanWizObject(rWiz);
+}
+
+void plusOp() {
+    struct wizObject* val2 = pop();
+    struct wizObject* val1 = pop();
+    struct wizObject* opArgRef = initWizObject(NUMBER);
     char doubleBuff[100];
     memset(doubleBuff,'\0',100);
     /*COMBINATORIC EXPLOSION GOOD LUCK ADDING MORE TYPES*/
@@ -191,5 +255,6 @@ void processPlusOperator(
         opArgRef->type = STRINGTYPE;
         pushInternal(opArgRef);
     }
-    return;
+    cleanWizObject(val1);
+    cleanWizObject(val2);
 }

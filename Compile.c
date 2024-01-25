@@ -45,7 +45,7 @@ long getFileSize(FILE *file) {
 char* fileToBuffer(char * fileName) {
     FILE *file = fopen(fileName, "rb");
     if (file == NULL) 
-        FATAL_ERROR( IO, -1, "Unable to open file: %s", fileName );
+        FATAL_ERROR(IO, -1, "Unable to open file: %s", fileName);
     long fileSize = getFileSize(file);
     char *buffer = (char *) malloc(fileSize + 1);
     programList = (struct TokenStruct *) malloc((sizeof(struct TokenStruct) * BASE_PROGRAM_LIST_SIZE));
@@ -56,7 +56,7 @@ char* fileToBuffer(char * fileName) {
 }
 
 int main () {
-    char* buffer = fileToBuffer("test.rs"); 
+    char* buffer = fileToBuffer("Tests/test.rs"); 
     setErrorFile(buffer);
 #ifdef OUTPUT_FILE
     printf("File content:\n%s\n\n", buffer);
@@ -84,8 +84,8 @@ int main () {
 #endif
     deallocateAST(aTree);
     /*PROGRAM EXECUTES*/
-    interpret();
-    freeProgramList(programList, programListSize);    
+    interpret();    
+    freeProgramList(programList, programListSize);
     free(program);
     free(buffer);
     return EXIT_SUCCESS;
