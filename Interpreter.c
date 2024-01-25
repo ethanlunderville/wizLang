@@ -242,40 +242,7 @@ void* binOpCode() {
         case PIPE: break;
         case ADD: plusOp(); break;
         case POWER: powerOp(); break;
-        case ASSIGNMENT: {
-            struct wizObject * temp = pop();
-            struct wizObject * ident = pop();
-            struct wizObject ** ref;
-            switch (ident->type) {
-                case WIZOBJECTPOINTER:
-                {
-                ref = ident->value.ptrVal;
-                decRef(*ref);
-                *ref = temp;
-                incRef(temp);
-                break;
-                }
-                case CHARADDRESS: 
-                {
-                ident->value.strValue[0] = *(temp->value.strValue);
-                break;
-                }
-                case IDENT: 
-                {
-                ref = getObjectRefFromIdentifier(ident->value.strValue);
-                if (ref == NULL)
-                    ref = declareSymbol(ident->value.strValue);
-                else
-                    decRef(*ref);
-                incRef(temp);
-                *ref = temp;
-                break;
-                }
-            }
-            cleanWizObject(temp);
-            cleanWizObject(ident);
-            break;
-            }
+        case ASSIGNMENT: assignOp(); break;
         case NOTEQUAL: EQ_OP_EXECUTION_MACRO(!=);
         case EQUAL: EQ_OP_EXECUTION_MACRO(==);
         case SUBTRACT: OP_EXECUTION_MACRO(-);
@@ -309,34 +276,7 @@ void* targetOffset() {
     } else if (continuosDataWiz->type == DICTIONARY) {
         struct wizList* keys = ((struct wizDict*)continuosDataWiz)->keys;
         struct wizList* values = ((struct wizDict*)continuosDataWiz)->values;
-        switch (offsetWiz->type) {
-            case STRINGTYPE: 
-            {
-            for (int i = 0 ; i < keys->size ; i++) {
-                if (keys->wizV.value.listVal[i]->type == STRINGTYPE 
-                && strcmp(keys->wizV.value.listVal[i]->value.strValue, offsetWiz->value.strValue) == 0){
-                    pushInternal(values->wizV.value.listVal[i]);
-                    return NULL;
-                }
-            }
-            FATAL_ERROR(RUNTIME, fetchCurrentLine(), "Invalid key for dictionary");
-            break;
-            }
-            case CHAR:
-            case CHARADDRESS:
-            case NUMBER:
-            {
-            for (int i = 0 ; i < keys->size ; i++) {
-                if (keys->wizV.value.listVal[i]->type == NUMBER 
-                && keys->wizV.value.listVal[i]->value.numValue == offsetWiz->value.numValue){
-                    pushInternal(values->wizV.value.listVal[i]);
-                    return NULL;
-                }
-            }
-            FATAL_ERROR(RUNTIME, fetchCurrentLine(), "Invalid key for dictionary");
-            break;    
-            }
-        }
+        mapRValueProcessor(keys, values, offsetWiz);
     }
     cleanWizObject(offsetWiz);
     cleanWizObject(continuosDataWiz);
@@ -361,42 +301,7 @@ void* targetLValOffset() {
     } else if (continuosDataWiz->type == DICTIONARY) {
         struct wizList* keys = ((struct wizDict*)continuosDataWiz)->keys;
         struct wizList* values = ((struct wizDict*)continuosDataWiz)->values;
-        switch (offsetWiz->type) {
-            case STRINGTYPE: 
-            {
-            for (int i = 0 ; i < keys->size ; i++) {
-                if (keys->wizV.value.listVal[i]->type == STRINGTYPE 
-                && strcmp(keys->wizV.value.listVal[i]->value.strValue, offsetWiz->value.strValue) == 0){
-                    struct wizObject * ptr = initWizObject(WIZOBJECTPOINTER);
-                    ptr->value.ptrVal = &(values->wizV.value.listVal[i]);
-                    pushInternal(ptr);
-                    return NULL;
-                }
-            }
-            break;
-            }
-            case CHAR:
-            case CHARADDRESS:
-            case NUMBER:
-            {
-            for (int i = 0 ; i < keys->size ; i++) {
-                if (keys->wizV.value.listVal[i]->type == NUMBER 
-                && keys->wizV.value.listVal[i]->value.numValue == offsetWiz->value.numValue){
-                    struct wizObject * ptr = initWizObject(WIZOBJECTPOINTER);
-                    ptr->value.ptrVal = &(values->wizV.value.listVal[i]);
-                    pushInternal(ptr);
-                    return NULL;
-                }
-            }
-            break;   
-            }
-        }
-        appendToWizList(keys, offsetWiz);
-        struct wizObject* wizTempNull = &nullV;
-        appendToWizList(values, wizTempNull);
-        struct wizObject* ptr = initWizObject(WIZOBJECTPOINTER);
-        ptr->value.ptrVal = &(values->wizV.value.listVal[values->size - 1]);
-        pushInternal(ptr);
+        mapLValueProcessor(keys, values, offsetWiz);
     }
     cleanWizObject(offsetWiz);
     cleanWizObject(continuosDataWiz);
@@ -586,3 +491,4 @@ void interpret() {
     // Pops the global scope
     popScope(NULL); 
 }
+

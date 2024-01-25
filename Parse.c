@@ -660,11 +660,9 @@ struct AST* sComplexType() {
             complexTypeAST->token->type = LIST;
             scan();
             while (!isCurrentToken(CLOSEBRACKET)) {
-                while (isCurrentToken(ENDLINE))
-                    scan();
+                skipLines();
                 addChild(complexTypeAST, sExpression(&expr));
-                while (isCurrentToken(ENDLINE))
-                    scan();
+                skipLines();
                 if (!isCurrentToken(CLOSEBRACKET)) {
                     expect(COMMA);
                     continue;

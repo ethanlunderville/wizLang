@@ -127,4 +127,17 @@ void powerOp();
 void jengaMomentLoL();
 
 const char* getTypeString(enum Types type);
+
+void mapRValueProcessor(
+    struct wizList * keys, 
+    struct wizList * values, 
+    struct wizObject * offsetWiz
+);
+
+void mapLValueProcessor(
+    struct wizList * keys, 
+    struct wizList * values, 
+    struct wizObject * offsetWiz
+);
+
 #endif

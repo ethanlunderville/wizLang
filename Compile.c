@@ -56,7 +56,7 @@ char* fileToBuffer(char * fileName) {
 }
 
 int main () {
-    char* buffer = fileToBuffer("Tests/test.rs"); 
+    char* buffer = fileToBuffer("test.rs"); 
     setErrorFile(buffer);
 #ifdef OUTPUT_FILE
     printf("File content:\n%s\n\n", buffer);

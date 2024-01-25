@@ -387,7 +387,8 @@ void codeGenWalker(struct AST * aTree) {
                 codeGenWalker(funcAST->children[i]);
             union TypeStore value;
             value.strValue = funcAST->token->lexeme;
-            programAdder(funcAST, call, value, STRINGTYPE);
+            if (getToken(funcAST) != DOTOP)
+                programAdder(funcAST, call, value, STRINGTYPE);
             break;
             }
         case FUNCTIONCALLIDENT:
