@@ -26,8 +26,8 @@
 #include "Keywords.h"
 #include "Error.h"
 
-extern struct Context* context;
 struct Context* globalContext;
+extern struct Context* context;
 extern struct wizObject nullV;
 
 void initGlobalContext() {
@@ -56,10 +56,10 @@ void* pushScope() {
 
 void* popScope(struct wizObject* retVal) {
     for (int i = 0 ; i < context->currentIndex ; i++) {
-        if (retVal == &nullV || retVal == NULL || retVal != context->map[i].value) 
+        if (retVal == NULL || retVal != context->map[i].value) 
             decRef(context->map[i].value);
         else if (retVal->referenceCount != -1)
-                retVal->referenceCount--;
+            retVal->referenceCount--;
     }
     struct Context* temp = context;
     context = context->cPtr;

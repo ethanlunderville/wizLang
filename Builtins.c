@@ -49,6 +49,7 @@ void* fEchoH() {
     case NUMBER: printf("%f",val->value.numValue); break;
     case STRINGTYPE: printf("%s",val->value.strValue); break;
     case CHARADDRESS: printf("%c",*(val->value.strValue)); break;
+    case CHAR: printf("%c",val->value.charVal); break;
     case LIST: 
     {
     int size = ((struct wizList*)val)->size;
@@ -92,7 +93,9 @@ void* fAppend(long lineNo) {
             getTypeString(list->type)
         );
     }
-    incRef(appender);
+    // This will only work if the list identifier points to a string 
+    // since the char being appended no longer needs to exist
+    cleanWizObject(appender);
     pushInternal(list);
 } 
 

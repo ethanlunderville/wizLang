@@ -22,8 +22,8 @@
 #include "Switchboard.h"
 
 extern long programListSize;
-extern struct TokenStruct * programList;
 extern struct opCode * program;
+extern struct TokenStruct * programList;
 
 /* Functions to read the file into a single buffer */
 

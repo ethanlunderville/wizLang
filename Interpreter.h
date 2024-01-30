@@ -30,6 +30,7 @@ typedef void* (*ByteCodeFunctionPtr)();
 union TypeStore {
     double numValue;
     char* strValue;
+    char charVal;
     struct wizObject** listVal;
     struct wizObject** ptrVal;
     enum Tokens opValue;
@@ -131,13 +132,15 @@ const char* getTypeString(enum Types type);
 void mapRValueProcessor(
     struct wizList * keys, 
     struct wizList * values, 
-    struct wizObject * offsetWiz
+    struct wizObject * offsetWiz,
+    long lineNo
 );
 
 void mapLValueProcessor(
     struct wizList * keys, 
     struct wizList * values, 
-    struct wizObject * offsetWiz
+    struct wizObject * offsetWiz,
+    long lineNo
 );
 
 #endif

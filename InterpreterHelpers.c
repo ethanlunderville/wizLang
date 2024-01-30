@@ -18,8 +18,8 @@
 #include "Error.h"
 #include "DataStructures.h"
 
-extern struct opCode * program;
 extern long instructionIndex;
+extern struct opCode * program;
 extern struct wizObject nullV;
 
 void initNullV() {
@@ -29,19 +29,28 @@ void initNullV() {
 }
 
 void cleanWizObject(struct wizObject* wiz) {
+    if (wiz == NULL)
+        FATAL_ERROR(LANGUAGE, -1, "NULL passed to cleanWiz"); 
     if (wiz->referenceCount != 0)
         return;
-    if (wiz->type == STRINGTYPE)
+    if (wiz->type == STRINGTYPE){
         free(wiz->value.strValue);
-    else if (wiz->type == LIST){
+        free(wiz);
+    } else if (wiz->type == LIST){
         struct wizList * list = (struct wizList*)wiz;
         for (int i = 0 ; i < list->size ; i++)
             decRef(wiz->value.listVal[i]);
         free(list->wizV.value.listVal);
         free(list);
         return;
+    } else if (wiz->type == DICTIONARY) {
+        struct wizDict * dict = (struct wizDict*)wiz;
+        decRef((struct wizObject *)dict->keys);
+        decRef((struct wizObject *)dict->values);
+        free(dict);
+    } else {
+        free(wiz);
     }
-    free(wiz);
 }
 
 long fetchCurrentLine() {
@@ -53,8 +62,7 @@ struct wizObject * fetchArg (long opCodeIndex) {
 }
 
 void decRef(struct wizObject * obj) {
-    if (obj == NULL)
-        return;
+    if (obj == NULL) return;
     if (obj->referenceCount != -1){
         obj->referenceCount--;
         cleanWizObject(obj);
@@ -62,7 +70,7 @@ void decRef(struct wizObject * obj) {
 }
 
 void incRef(struct wizObject * obj) {
-    if (obj==NULL) return;
+    if (obj == NULL) return;
     if (obj->referenceCount != -1)
         obj->referenceCount++;
 }
@@ -129,7 +137,8 @@ void assignOp() {
         }
         case CHARADDRESS: 
         {
-        ident->value.strValue[0] = *(temp->value.strValue);
+        ident->value.strValue[0] = temp->value.charVal;
+        decRef(ident);
         break;
         }
         case IDENT: 
@@ -248,9 +257,13 @@ void plusOp() {
 void mapRValueProcessor(
     struct wizList * keys, 
     struct wizList * values, 
-    struct wizObject * offsetWiz
+    struct wizObject * offsetWiz,
+    long lineNo
 ) {
     switch (offsetWiz->type) {
+        //@todo add a line number to the error
+        case DICTIONARY: FATAL_ERROR(RUNTIME, lineNo, "Dictionary key may not be a dictionary");
+        case LIST: FATAL_ERROR(RUNTIME, lineNo, "Dictionary key may not be a list");
         case STRINGTYPE: 
         {
         for (int i = 0 ; i < keys->size ; i++) {
@@ -266,8 +279,16 @@ void mapRValueProcessor(
             "Invalid key for dictionary");
         break;
         }
-        case CHAR:
         case CHARADDRESS:
+        {
+        for (int i = 0 ; i < keys->size ; i++) {
+            if (keys->wizV.value.listVal[i]->type == CHARADDRESS
+            && keys->wizV.value.listVal[i]->value.strValue[0] == offsetWiz->value.strValue[0]) {
+                pushInternal(values->wizV.value.listVal[i]);
+                return;
+            }
+        } 
+        }
         case NUMBER:
         {
         for (int i = 0 ; i < keys->size ; i++) {
@@ -289,9 +310,13 @@ void mapRValueProcessor(
 void mapLValueProcessor(
     struct wizList * keys, 
     struct wizList * values, 
-    struct wizObject * offsetWiz
+    struct wizObject * offsetWiz,
+    long lineNo
 ) {
     switch (offsetWiz->type) {
+        //@todo add a line number to the error
+        case DICTIONARY: FATAL_ERROR(RUNTIME, lineNo, "Dictionary key may not be a dictionary");
+        case LIST: FATAL_ERROR(RUNTIME, lineNo, "Dictionary key may not be a list");
         case STRINGTYPE: 
         {
         for (int i = 0 ; i < keys->size ; i++) {
@@ -305,8 +330,19 @@ void mapLValueProcessor(
         }
         break;
         }
-        case CHAR:
         case CHARADDRESS:
+        {
+        for (int i = 0 ; i < keys->size ; i++) {
+            if (keys->wizV.value.listVal[i]->type == CHARADDRESS
+            && keys->wizV.value.listVal[i]->value.strValue[0] == offsetWiz->value.strValue[0]) {
+                struct wizObject * ptr = initWizObject(WIZOBJECTPOINTER);
+                ptr->value.ptrVal = &(values->wizV.value.listVal[i]);
+                pushInternal(ptr);
+                return;
+            }
+        }
+        break;   
+        }    
         case NUMBER:
         {
         for (int i = 0 ; i < keys->size ; i++) {

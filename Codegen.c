@@ -34,18 +34,13 @@
 
 */
 
+bool onLVal;
 long programSize = 0;
 long programCapacity = 0;
-struct opCode * program;
-
-// Faux null union
 union TypeStore nullVal;
-
-bool onLVal;
-
+struct opCode * program;
 extern struct TokenStruct exprNoAssign;
 extern struct TokenStruct expr;
-// Global context to declare functions
 extern struct Context* context;
 
 ////////////////////////////////////////////////////////////////
@@ -221,8 +216,8 @@ void codeGenWalker(struct AST * aTree) {
         case CHARADDRESS: 
             {
             union TypeStore value;
-            value.strValue = aTree->token->lexeme; 
-            programAdder(aTree, push, value, CHARADDRESS);
+            value.charVal = aTree->token->lexeme[0]; 
+            programAdder(aTree, push, value, CHAR);
             break;               
             }
         case NUMBER:
@@ -332,22 +327,21 @@ void codeGenWalker(struct AST * aTree) {
         case LAMBDA:
         case DEF:
             {
-            /*
-            Create a wiz object that stores the current line
-            as an argument so that when the function is called
-            the interpreter knows what line to start on.
-            */
-            struct wizObject * lineHolder = (struct wizObject *) malloc(sizeof(struct wizObject));
-            lineHolder->type = NUMBER;
-            lineHolder->referenceCount = 1; 
-            lineHolder->value.numValue = programSize + 2; // Add three to skip the jump
-            // Declare the function with the function identifier
             if (aTree->token->token == DEF){
+                /*
+                Create a wiz object that stores the current line
+                as an argument so that when the function is called
+                the interpreter knows what line to start on.
+                */
+                struct wizObject * lineHolder = initWizObject(NUMBER);
+                lineHolder->referenceCount = 1; 
+                lineHolder->value.numValue = programSize + 2; // Add three to skip the jump
+                // Declare the function with the function identifier
                 struct wizObject ** funcVal = declareSymbol(aTree->children[0]->token->lexeme);
                 *funcVal = lineHolder;
             } else if (aTree->token->token == LAMBDA) {
                 union TypeStore ov;
-                ov.numValue = lineHolder->value.numValue+1;
+                ov.numValue = programSize + 3;
                 programAdder(aTree,push,ov,NUMBER);
             }
             // Initialize an unconditional jump that prevents the function from being called when it is declared

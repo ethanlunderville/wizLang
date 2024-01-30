@@ -20,14 +20,18 @@ def filter(array, function) {
     return retList
 }
 
-
-l = [1,2,3].map((element) => { return element * element }).filter((e)=>{
-    if (e == 1) 
+temp = "hello".map((e)=>{ if (e == 'e') { return e } }).filter((e)=>{
+    if (e == 'e'){
         return e
-}).forEach((e)=>{})
+    }
+})
 
-map = {
-    '2':1
+e = [1,2,3]
+
+def tmp() {
+    return e
 }
 
-map['2'].echo()
+tmp()[0] = 55
+
+echo(e)

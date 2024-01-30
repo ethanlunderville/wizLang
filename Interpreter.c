@@ -46,7 +46,6 @@ struct Context* context;
 // Pseudo Null
 struct wizObject nullV;
 
-
 /*
 
     This is to fetch args from the flattened list of
@@ -120,8 +119,13 @@ int dumpStack() {
             ); break;
         case CHARADDRESS:
             printf(
-                " %c",
+                " %c\n",
                 *(stack[i]->value.strValue)
+            ); break;
+        case CHAR: 
+            printf(
+                " %c\n",
+                stack[i]->value.charVal
             ); break;
         }
         puts(" ------------------------");
@@ -198,8 +202,8 @@ void* pushLookup() {
     struct wizObject* wizInplace = initWizObject(NUMBER); \
     if (lWiz->type == STRINGTYPE && rWiz->type == STRINGTYPE) { \
         typeVal.numValue = (double)(strcmp(rWiz->value.strValue, lWiz->value.strValue) op 0); \
-    } else if (lWiz->type == CHARADDRESS && rWiz->type == CHARADDRESS) { \
-        typeVal.numValue = (double)(lWiz->value.strValue[0] op rWiz->value.strValue[0]); \
+    } else if (lWiz->type == CHAR && rWiz->type == CHAR) { \
+        typeVal.numValue = (double)(lWiz->value.charVal op rWiz->value.charVal); \
     } else { \
         typeVal.numValue = (double)(lWiz->value.numValue op rWiz->value.numValue); \
     } \
@@ -220,14 +224,21 @@ void* pushLookup() {
     union TypeStore temp; \
     struct wizObject* rWiz = pop(); \
     struct wizObject* lWiz = pop(); \
+    \
     if (rWiz->type == CHARADDRESS) \
         rightHand = (double)(*(rWiz->value.strValue)); \
+    else if (rWiz->type == CHAR) \
+        rightHand = (double)(rWiz->value.charVal); \
     else \
         rightHand = rWiz->value.numValue; \
+    \
     if (lWiz->type == CHARADDRESS) \
         leftHand = (double)(*(lWiz->value.strValue)); \
+    else if (lWiz->type == CHAR) \
+        leftHand = (double)(lWiz->value.charVal); \
     else \
         leftHand = lWiz->value.numValue; \
+    \
     temp.numValue = leftHand op rightHand; \
     wizInplace->value = temp; \
     pushInternal(wizInplace); \
@@ -266,8 +277,8 @@ void* targetOffset() {
     if (continuosDataWiz->type == STRINGTYPE) {
         int listSize = ((struct wizList*)continuosDataWiz)->size;
         if (index < 0) index = translateIndex(index, listSize);
-        struct wizObject* characterObj = initWizObject(CHARADDRESS);
-        characterObj->value.strValue = &((continuosDataWiz->value.strValue[index]));
+        struct wizObject* characterObj = initWizObject(CHAR);
+        characterObj->value.charVal = continuosDataWiz->value.strValue[index];
         pushInternal(characterObj);
     } else if (continuosDataWiz->type == LIST) {
         int listSize = ((struct wizList*)continuosDataWiz)->size;
@@ -276,7 +287,7 @@ void* targetOffset() {
     } else if (continuosDataWiz->type == DICTIONARY) {
         struct wizList* keys = ((struct wizDict*)continuosDataWiz)->keys;
         struct wizList* values = ((struct wizDict*)continuosDataWiz)->values;
-        mapRValueProcessor(keys, values, offsetWiz);
+        mapRValueProcessor(keys, values, offsetWiz, fetchCurrentLine());
     }
     cleanWizObject(offsetWiz);
     cleanWizObject(continuosDataWiz);
@@ -301,7 +312,7 @@ void* targetLValOffset() {
     } else if (continuosDataWiz->type == DICTIONARY) {
         struct wizList* keys = ((struct wizDict*)continuosDataWiz)->keys;
         struct wizList* values = ((struct wizDict*)continuosDataWiz)->values;
-        mapLValueProcessor(keys, values, offsetWiz);
+        mapLValueProcessor(keys, values, offsetWiz, fetchCurrentLine());
     }
     cleanWizObject(offsetWiz);
     cleanWizObject(continuosDataWiz);
@@ -475,10 +486,11 @@ void * unaryFlip() {
     Driver code for the VM.
 
 */
-
+void b() {}
 void interpret() {
     initNullV();
     while (instructionIndex < programSize) {
+        b();
         program[instructionIndex].associatedOperation();
         instructionIndex++;
 #ifdef DUMP_STACK
