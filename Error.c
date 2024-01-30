@@ -24,6 +24,8 @@ static char* fileBuffer;
 
 */
 
+void br() {}
+
 void setErrorFile(char* buffer) {
     fileBuffer = buffer;
 }

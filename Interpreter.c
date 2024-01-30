@@ -486,11 +486,10 @@ void * unaryFlip() {
     Driver code for the VM.
 
 */
-void b() {}
+
 void interpret() {
     initNullV();
     while (instructionIndex < programSize) {
-        b();
         program[instructionIndex].associatedOperation();
         instructionIndex++;
 #ifdef DUMP_STACK

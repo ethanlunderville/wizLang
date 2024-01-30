@@ -45,3 +45,40 @@ echo("\tEXPECT 22 :: " + func()[0]()[1]()[0]()[0])
 
 echo("COMPLEX EXPRESSIONS TEST")
 echo("\tEXPECT 3 ::" + 1*2^3-3-4^1/7*7/2)
+
+echo("MAP/FILTER TEST")
+
+def forEach(array,function) {
+   for (i=0;i<array.size();i++)
+       function(array[i]) 
+}
+
+def map(array, function) {
+   retList = []
+   for (i=0;i<array.size();i++)
+       retList.append(function(array[i]))
+   return retList
+}
+
+def filter(array, function) {
+   retList = []
+   for (i=0;i<array.size();i++){
+       store = function(array[i])
+       if (store != 0) 
+           retList.append(store)
+   }
+   return retList
+}
+
+temp = "hello".map((e)=>{
+   if (e == 'e') { 
+       return e 
+   } 
+}).filter((e)=>{
+   if (e == 'e'){
+       return e
+   }
+})
+
+echo("EXPECT [e] :: ")
+echo(temp)

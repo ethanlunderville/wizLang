@@ -23,7 +23,10 @@
 
 extern struct wizObject* stack;
 extern struct wizObject nullV;
+int treeIndent = 0;
+int json = 0;
 
+void printIndent(int spaceNum);
 
 BuiltInFunctionPtr getBuiltin(char * funcName) {
     if (strcmp("echo", funcName)==0) return &fEcho;
@@ -43,11 +46,20 @@ void* fSize(long lineNo) {
 }
 
 void* fEchoH() {
+    if (json) {
+        printIndent(treeIndent);
+        printf("\"");
+    }
     struct wizObject* val = pop();
     switch (val->type) 
     {
     case NUMBER: printf("%f",val->value.numValue); break;
-    case STRINGTYPE: printf("%s",val->value.strValue); break;
+    case STRINGTYPE:
+    {
+    if (json) printf("%s",val->value.strValue); 
+    else printf("\"%s\"",val->value.strValue);
+    break;
+    }
     case CHARADDRESS: printf("%c",*(val->value.strValue)); break;
     case CHAR: printf("%c",val->value.charVal); break;
     case LIST: 
@@ -65,10 +77,25 @@ void* fEchoH() {
     }
     case DICTIONARY:
     {
-    pushInternal((struct wizObject*)(((struct wizDict*)val)->keys));
-    fEcho();
-    pushInternal((struct wizObject*)(((struct wizDict*)val)->values));
-    fEcho();
+    struct wizList * keys = ((struct wizDict*)val)->keys;
+    struct wizList * values = (((struct wizDict*)val)->values);
+    int iterNum = keys->size;
+    printf("{\n");
+    treeIndent += 2;
+    for (int i = 0 ; i < iterNum ; i++) {
+        json = 1;
+        pushInternal(keys->wizV.value.listVal[i]);
+        fEchoH();
+        printf("\"");
+        json = 0;
+        printf(" : ");
+        pushInternal(values->wizV.value.listVal[i]);
+        fEchoH();
+        printf(",\n");
+    }
+    treeIndent -= 2;
+    printIndent(treeIndent);
+    printf("}");
     }
     }
     cleanWizObject(val);

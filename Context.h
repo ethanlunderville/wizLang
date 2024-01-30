@@ -19,6 +19,7 @@ struct Context {
 struct Context* initContext();
 void initGlobalContext();
 void printContext();
+void printIndent(int spaceNum);
 int addToContext(char * identifier, struct wizObject * test);
 void* pushScope();
 void* popScope(struct wizObject* retVal);
