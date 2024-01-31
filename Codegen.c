@@ -198,7 +198,11 @@ void codeGenWalker(struct AST * aTree) {
             }
         case DICTIONARY:
             {
-            traverseChildren(aTree);
+            assert(aTree->childCount > 0 && aTree->childCount % 2 == 0);
+            for (int i = aTree->childCount - 2 ; i > -1 ; i-=2) {
+                codeGenWalker(aTree->children[i]);
+                codeGenWalker(aTree->children[i+1]);
+            }
             union TypeStore value;
             value.numValue = (double)aTree->childCount;
             programAdder(aTree, buildDict, value, NUMBER);    

@@ -17,6 +17,7 @@
 #define OPCODE_ARGLIMIT 5
 #define LINE_STACK_LIMIT 100
 #define STACK_LIMIT 100
+#define DOUBLE_FORMAT_SIZE 100
 
 struct TokenStruct;
 struct AST;

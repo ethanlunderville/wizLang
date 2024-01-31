@@ -11,7 +11,7 @@
     the functions in this file is used.
 
 */
-
+#include <limits.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,23 +21,40 @@
 #include "Error.h"
 #include "Mem.h"
 
+int treeIndent = 0;
+int jsonPrinterLeft = 0;
+int jPrinterOn = 0; 
+
+char doubleFormatingBuffer[DOUBLE_FORMAT_SIZE];
+char currentPath[PATH_MAX];
+char pathBuilder[PATH_MAX];
+
 extern struct wizObject* stack;
 extern struct wizObject nullV;
-int treeIndent = 0;
-int json = 0;
 
 void printIndent(int spaceNum);
 
 BuiltInFunctionPtr getBuiltin(char * funcName) {
     if (strcmp("echo", funcName)==0) return &fEcho;
     if (strcmp("size", funcName)==0) return &fSize;
-    if (strcmp("append", funcName)==0) return &fAppend;
+    if (strcmp("push", funcName)==0) return &fPush;
     if (strcmp("type", funcName)==0) return &fType;
+    if (strcmp("read", funcName)==0) return &fRead;
+    if (strcmp("write", funcName)==0) return &fWrite;
+    if (strcmp("append", funcName)==0) return &fAppend;
     return 0;
 }
 
 void* fSize(long lineNo) {
-    struct wizList* val = (struct wizList*)pop();
+    struct wizObject* potentialVal = pop();
+    if (potentialVal->type != STRINGTYPE && potentialVal->type != LIST)
+        FATAL_ERROR(
+            RUNTIME, 
+            lineNo, 
+            "Attempted to take the size of a non continuos type :: %s", 
+            getTypeString(potentialVal->type)
+        );
+    struct wizList* val = (struct wizList*)potentialVal;
     struct wizObject* wizOb = (struct wizObject*)malloc(sizeof(struct wizObject));
     wizOb->type = NUMBER;
     wizOb->value.numValue = ((double)val->size);
@@ -46,57 +63,74 @@ void* fSize(long lineNo) {
 }
 
 void* fEchoH() {
-    if (json) {
+    if (jsonPrinterLeft) {
         printIndent(treeIndent);
         printf("\"");
     }
     struct wizObject* val = pop();
-    switch (val->type) 
-    {
-    case NUMBER: printf("%f",val->value.numValue); break;
-    case STRINGTYPE:
-    {
-    if (json) printf("%s",val->value.strValue); 
-    else printf("\"%s\"",val->value.strValue);
-    break;
-    }
+    switch (val->type) {
     case CHARADDRESS: printf("%c",*(val->value.strValue)); break;
-    case CHAR: printf("%c",val->value.charVal); break;
+    case CHAR: printf("%c",val->value.charVal); break; 
+    case NUMBER:
+        { 
+        memset(doubleFormatingBuffer,'\0', DOUBLE_FORMAT_SIZE);
+        int maxLength = snprintf(NULL, 0, "%f", val->value.numValue) + 1;
+        snprintf(doubleFormatingBuffer, maxLength, "%f", val->value.numValue);
+        if (floatStrContainsDecimal(doubleFormatingBuffer))
+            removeZerosFromDoubleString(doubleFormatingBuffer);
+        printf("%s", doubleFormatingBuffer);
+        break; 
+        }
+    case STRINGTYPE:
+        {
+        if (!jPrinterOn || jsonPrinterLeft) 
+            printf("%s",val->value.strValue);
+        else 
+            printf("\"%s\"",val->value.strValue);
+        break;
+        }
     case LIST: 
-    {
-    int size = ((struct wizList*)val)->size;
-    printf("[");
-    for (int i = 0 ; i < size; i++) {
-        pushInternal(val->value.listVal[i]);
-        fEchoH();
-        if (i != size - 1)
-            printf(", ");
-    }
-    printf("]");
-    break;
-    }
+        {
+        int size = ((struct wizList*)val)->size;
+        printf("[");
+        for (int i = 0 ; i < size; i++) {
+            pushInternal(val->value.listVal[i]);
+            fEchoH();
+            pop();
+            if (i != size - 1) printf(", ");
+        }
+        printf("]");
+        break;
+        }
     case DICTIONARY:
-    {
-    struct wizList * keys = ((struct wizDict*)val)->keys;
-    struct wizList * values = (((struct wizDict*)val)->values);
-    int iterNum = keys->size;
-    printf("{\n");
-    treeIndent += 2;
-    for (int i = 0 ; i < iterNum ; i++) {
-        json = 1;
-        pushInternal(keys->wizV.value.listVal[i]);
-        fEchoH();
-        printf("\"");
-        json = 0;
-        printf(" : ");
-        pushInternal(values->wizV.value.listVal[i]);
-        fEchoH();
-        printf(",\n");
-    }
-    treeIndent -= 2;
-    printIndent(treeIndent);
-    printf("}");
-    }
+        {
+        struct wizList * keys = ((struct wizDict*)val)->keys;
+        struct wizList * values = (((struct wizDict*)val)->values);
+        int iterNum = keys->size;
+        printf("{\n");
+        treeIndent += JSON_PRINT_INDENT;
+        jPrinterOn = 1;
+        for (int i = 0 ; i < iterNum ; i++) {
+            jsonPrinterLeft = 1;
+            pushInternal(keys->wizV.value.listVal[i]);
+            fEchoH();
+            jPrinterOn = 1;
+            pop();
+            printf("\"");
+            jsonPrinterLeft = 0;
+            printf(" : ");
+            pushInternal(values->wizV.value.listVal[i]);
+            fEchoH();
+            jPrinterOn = 1;
+            pop();
+            if (i == iterNum - 1)  printf("\n");
+            else printf(",\n");
+        }
+        treeIndent -= JSON_PRINT_INDENT;
+        printIndent(treeIndent);
+        printf("}");
+        jPrinterOn = 0;
+        }
     }
     cleanWizObject(val);
     pushInternal(&nullV);
@@ -107,7 +141,7 @@ void* fEcho(long lineNo) {
     printf("\n");
 }
 
-void* fAppend(long lineNo) {
+void* fPush(long lineNo) {
     struct wizObject* appender = pop();
     struct wizObject* list = pop();
     switch (list->type) {
@@ -132,15 +166,17 @@ void * fType(long lineNo) {
     switch (tVal->type) {
         case NUMBER: ret->value.strValue = copyStr("NUMBER"); break;
         case STRINGTYPE: ret->value.strValue = copyStr("STRINGTYPE"); break;
-        case BINOP: ret->value.strValue = copyStr("BINOP"); break;
-        case OP: ret->value.strValue = copyStr("OP"); break;
         case CHARADDRESS: ret->value.strValue = copyStr("CHAR"); break;
         case LIST: ret->value.strValue = copyStr("LIST"); break;
         case CHAR: ret->value.strValue = copyStr("CHAR"); break;
         case DICTIONARY: ret->value.strValue = copyStr("DICTIONARY"); break;
     default:
-        FATAL_ERROR(LANGUAGE, lineNo, "UNRECOGNIZED TYPE");
+        FATAL_ERROR(LANGUAGE, lineNo, "Unrecognized Type in type() function");
     }
     cleanWizObject(tVal);
     pushInternal(ret);
 }
+
+void* fRead() {}
+void* fWrite() {}
+void* fAppend() {}

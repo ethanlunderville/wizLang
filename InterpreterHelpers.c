@@ -175,8 +175,8 @@ void plusOp() {
     struct wizObject* val2 = pop();
     struct wizObject* val1 = pop();
     struct wizObject* opArgRef = initWizObject(NUMBER);
-    char doubleBuff[100];
-    memset(doubleBuff,'\0',100);
+    char doubleBuff[DOUBLE_FORMAT_SIZE];
+    memset(doubleBuff,'\0',DOUBLE_FORMAT_SIZE);
     /*COMBINATORIC EXPLOSION GOOD LUCK ADDING MORE TYPES*/
     if (val1->type == CHARADDRESS && val2->type == CHARADDRESS) {
         opArgRef->type = STRINGTYPE;
@@ -288,6 +288,16 @@ void mapRValueProcessor(
                 return;
             }
         } 
+        }
+        case CHAR:
+        {
+        for (int i = 0 ; i < keys->size ; i++) {
+            if (keys->wizV.value.listVal[i]->type == CHAR
+            && keys->wizV.value.listVal[i]->value.charVal == offsetWiz->value.charVal) {
+                pushInternal(values->wizV.value.listVal[i]);
+                return;
+            }
+        }    
         }
         case NUMBER:
         {

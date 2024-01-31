@@ -29,7 +29,6 @@ struct TokenStruct * programList; // Series of tokens representing the source pr
 long currentProgramListCounter = 0;
 long programListSize = 0;
 long programListCapacity = BASE_PROGRAM_LIST_SIZE;
-
 /* PSUEDO TOKENS TO CLEAN DETERMINE IF STACK
  NEEDS CLEANING AFTER EXPRESSION IS EVALUATED  */
 struct TokenStruct exprNoAssign;
@@ -382,7 +381,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
 
 // Adds a token to the list that the lexer outputs for the parser.
 
-void addToProgramList(char * lexeme, enum Types type, long lineNo, enum Tokens token) {
+struct TokenStruct * addToProgramList(char * lexeme, enum Types type, long lineNo, enum Tokens token) {
     if (programListSize == programListCapacity - 1) {
         programListCapacity *= 2;
         programList = realloc(programList, programListCapacity);
@@ -393,6 +392,7 @@ void addToProgramList(char * lexeme, enum Types type, long lineNo, enum Tokens t
     programList[currentProgramListCounter].type = type;
     currentProgramListCounter++;
     programListSize++;
+    return &(programList[programListSize-1]);
 }
 
 // Prints lexemes for debugging
@@ -436,14 +436,22 @@ void freeProgramList(struct TokenStruct * programList, long size) {
 
 // Parses every type of identifier
 
+void skipLines() {
+    while (isCurrentToken(ENDLINE)) 
+        scan();
+}
+
 struct AST* sFunctionCallLambda() {
     struct AST * lTree = initAST(getCurrentTokenStruct());
     lTree->token->token = LAMBDACALL;
     scan();
     while (!isCurrentToken(RIGHTPARENTH)) {
-        addChild(lTree, sExpression(&expr));        
+        skipLines();
+        addChild(lTree, sExpression(&expr));
+        skipLines();        
         if (!isCurrentToken(RIGHTPARENTH)) 
             expect(COMMA);
+        skipLines();
     }
     scan();
     if (isCurrentToken(LEFTPARENTH)) {
@@ -480,9 +488,12 @@ struct AST* sIdentTree() {
             identTree->token->token = FUNCTIONCALLIDENT;
             scan();
             while (!isCurrentToken(RIGHTPARENTH)) {
-                addChild(identTree, sExpression(&expr));        
+                skipLines();
+                addChild(identTree, sExpression(&expr));
+                skipLines();        
                 if (!isCurrentToken(RIGHTPARENTH)) 
                     expect(COMMA);
+                skipLines();
             }
             scan();
             if (isCurrentToken(LEFTPARENTH))
@@ -513,9 +524,20 @@ struct AST* sReturn() {
 }
 
 struct AST* sNewLineBlock() {
-    struct AST * bTree = initAST(getCurrentTokenStruct());
-    if (isCurrentToken(ENDLINE))
+    struct AST * bTree;
+    if (!isCurrentToken(ENDLINE)){
+        descan(); // So that the token that is overwritten is unimportant
+        // Ensure the token isn't needed
+        assert(isCurrentToken(RIGHTPARENTH) || isCurrentToken(ELSE));
+        // NOTE:: Else token can be overwritten since the codegen ignores it
+        // @important :: if codegen is changed to need to see the token 
+        // this must be changed
+        bTree = initAST(getCurrentTokenStruct());
         scan();
+    } else {
+        bTree = initAST(getCurrentTokenStruct());
+        scan();
+    }
     bTree->token->token = OPENBRACE;
     while (!isCurrentToken(ENDLINE) && !isCurrentToken(ENDOFFILE)) {
         if (onExpressionToken())
@@ -616,11 +638,6 @@ struct AST* sConditional() {
     return condTree;
 } 
 
-void skipLines() {
-    while (isCurrentToken(ENDLINE)) 
-        scan();
-}
-
 struct AST* sComplexType() {
     struct AST * complexTypeAST = initAST(getCurrentTokenStruct());
     switch (getCurrentTokenStruct()->token) {
@@ -703,8 +720,12 @@ struct AST * sLambda() {
     addChild(lTree, pseudoIdentTree);
     expect(LEFTPARENTH);
     while (!isCurrentToken(RIGHTPARENTH)) {
+        skipLines();
+        if (isCurrentToken(RIGHTPARENTH))
+            break;
         addChild(pseudoIdentTree, initAST(getCurrentTokenStruct()));
         scan();
+        skipLines();
         if (!isCurrentToken(RIGHTPARENTH)) 
             expect(COMMA);
     }
@@ -742,8 +763,12 @@ struct AST* parse() {
             scan();
         else if (getCurrentTokenStruct()->token == ENDOFFILE)
             break;
-        else
-            FATAL_ERROR(PARSE, getCurrentLine(), "Unexpected Symbol");
+        else FATAL_ERROR(
+            PARSE, 
+            getCurrentLine(), 
+            "Unexpected Symbol: %s", 
+            getCurrentTokenStruct()->lexeme
+        );
     }
     return aTree;
 }
@@ -752,6 +777,10 @@ struct AST* parse() {
 
 void scan() { 
     currentProgramListCounter++; 
+}
+
+void descan() { 
+    currentProgramListCounter--; 
 }
 
 // Parser utility
@@ -829,8 +858,7 @@ bool onData() {
 bool onConditionalToken() {
     return (isCurrentToken(IF)
        ||isCurrentToken(WHILE)
-       ||isCurrentToken(FOR)
-    );
+       ||isCurrentToken(FOR));
 }
 
 bool onUnary() {
@@ -847,8 +875,7 @@ bool onExpressionBreaker() {
        ||isCurrentToken(CLOSEBRACKET)
        ||isCurrentToken(CLOSEBRACE)
        ||isCurrentToken(SEMICOLON)
-       ||isCurrentToken(COLON)
-    );
+       ||isCurrentToken(COLON));
 }
 
 // Parser utility
@@ -930,9 +957,9 @@ enum Tokens getOperatorPrecedenceFromASTNode(struct AST* node) {
 void nonAssociativeTypeFlipper(struct AST* currentTree, struct AST* nextTree) {
     enum Tokens nextPrecedence = getOperatorPrecedenceFromASTNode(nextTree);
     enum Tokens currentPrecedence = getOperatorPrecedenceFromASTNode(currentTree);
-    if (nextPrecedence == DIVIDE && (currentPrecedence == MULTIPLY ||currentPrecedence == DIVIDE ))
+    if (nextPrecedence == DIVIDE && (currentPrecedence == MULTIPLY || currentPrecedence == DIVIDE ))
         currentTree->token->token = currentTree->token->token == MULTIPLY ? DIVIDE : MULTIPLY;
-    if (nextPrecedence == SUBTRACT && (currentPrecedence == SUBTRACT ||currentPrecedence == ADD ))
+    if (nextPrecedence == SUBTRACT && (currentPrecedence == SUBTRACT || currentPrecedence == ADD ))
         currentTree->token->token = currentTree->token->token == ADD ? SUBTRACT : ADD;
 }
 
@@ -981,7 +1008,7 @@ struct AST* sOperand(struct ASTStack * operandStack, int parseUn) {
 #endif
     struct AST* pushTree;
     if (!onOperandToken() && !onUnary())    
-        FATAL_ERROR( PARSE, getCurrentLine(), "Malformed expression" );
+        FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression, violating token: %s", getCurrentTokenStruct()->lexeme);
     if (onUnary()) {
         pushTree = initAST(getCurrentTokenStruct());
         pushTree->token->type = UNARY;
@@ -1033,7 +1060,7 @@ int sOperator(struct AST * exprTree, struct ASTStack * operandStack, struct ASTS
     } else if (onExpressionBreaker()){
         return 0;
     } else {
-        FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression");
+        FATAL_ERROR(PARSE, getCurrentLine(), "Malformed expression, violating token: %s", getCurrentTokenStruct()->lexeme);
     } 
     return 1;
 }

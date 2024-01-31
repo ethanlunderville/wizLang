@@ -56,7 +56,7 @@ def forEach(array,function) {
 def map(array, function) {
    retList = []
    for (i=0;i<array.size();i++)
-       retList.append(function(array[i]))
+       retList.push(function(array[i]))
    return retList
 }
 
@@ -65,7 +65,7 @@ def filter(array, function) {
    for (i=0;i<array.size();i++){
        store = function(array[i])
        if (store != 0) 
-           retList.append(store)
+           retList.push(store)
    }
    return retList
 }
