@@ -11,7 +11,7 @@ $(OUT): $(SRC)
 	$(CC) $(CFLAGS) $^ -o $@
 
 run: clean $(OUT)
-	./$(OUT)
+	./$(OUT) test.rs
 
 debug: $(OUT)
 	gdb ./$(OUT)

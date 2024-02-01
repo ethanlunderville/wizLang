@@ -11,6 +11,7 @@
     the functions in this file is used.
 
 */
+
 #include <limits.h>
 #include <string.h>
 #include <stdio.h>
@@ -26,8 +27,9 @@ int jsonPrinterLeft = 0;
 int jPrinterOn = 0; 
 
 char doubleFormatingBuffer[DOUBLE_FORMAT_SIZE];
+
 char currentPath[PATH_MAX];
-char pathBuilder[PATH_MAX];
+int basePathSize = 0;
 
 extern struct wizObject* stack;
 extern struct wizObject nullV;
@@ -146,7 +148,13 @@ void* fPush(long lineNo) {
     struct wizObject* list = pop();
     switch (list->type) {
         case LIST: appendToWizList((struct wizList*) list, appender); break;
-        case STRINGTYPE: appendToString((struct wizList*) list, appender); break;
+        case STRINGTYPE:
+        {
+        if (appender->type != CHAR && appender->type != CHARADDRESS)
+            FATAL_ERROR(RUNTIME, lineNo, "Cannot append a non char type to string");
+        appendToString((struct wizList*) list, appender); 
+        break;
+        }
         default: FATAL_ERROR(
             RUNTIME, 
             lineNo, 
@@ -177,6 +185,18 @@ void * fType(long lineNo) {
     pushInternal(ret);
 }
 
-void* fRead() {}
+void buildPath(char * rPath) {
+    memset(currentPath + basePathSize,'\0', PATH_MAX - basePathSize);
+
+}
+
+char* fileToBuffer(char * fileName);
+
+void* fRead(long lineNo) {
+    struct wizObject * path = pop(); 
+    struct wizList * fileBuff = initWizString(fileToBuffer(path->value.strValue));
+    pushInternal((struct wizObject *)fileBuff);
+    cleanWizObject(path);
+}
 void* fWrite() {}
 void* fAppend() {}

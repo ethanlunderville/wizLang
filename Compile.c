@@ -16,6 +16,8 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <limits.h>
+#include <unistd.h>
 #include "Parse.h"
 #include "Interpreter.h"
 #include "Error.h"
@@ -24,6 +26,16 @@
 extern long programListSize;
 extern struct opCode * program;
 extern struct TokenStruct * programList;
+extern char currentPath[PATH_MAX];
+extern int basePathSize;
+
+void initFilePathHolders() {
+    memset(currentPath,'\0', PATH_MAX);
+    if (getcwd(currentPath, PATH_MAX) == NULL)
+        FATAL_ERROR(IO, -1 , "Error getting current directory");
+    basePathSize = strlen(currentPath);
+    printf("%s\n", currentPath);
+}
 
 /* Functions to read the file into a single buffer */
 
@@ -55,8 +67,11 @@ char* fileToBuffer(char * fileName) {
     return buffer;
 }
 
-int main () {
-    char* buffer = fileToBuffer("test.rs"); 
+int main (int argc, char * argv[]) {
+    if (argc < 2) d
+        FATAL_ERROR(IO, -1, "Source file not provided");
+    initFilePathHolders(); 
+    char* buffer = fileToBuffer(argv[1]);
     setErrorFile(buffer);
 #ifdef OUTPUT_FILE
     printf("File content:\n%s\n\n", buffer);

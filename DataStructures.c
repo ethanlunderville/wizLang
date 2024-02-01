@@ -52,10 +52,11 @@ void appendToWizList(struct wizList * list, struct wizObject* element) {
 }
 
 void appendToString(struct wizList * string, struct wizObject* charElement) {
-    if (charElement->type != CHARADDRESS)
-        FATAL_ERROR(RUNTIME, -1, "Cannot append a non char type to string");
     string->size++;
     string->wizV.value.strValue = realloc(string->wizV.value.strValue, string->size);
-    string->wizV.value.strValue[string->size - 1] = charElement->value.strValue[0];
+    if (charElement->type == CHARADDRESS)
+        string->wizV.value.strValue[string->size - 1] = charElement->value.strValue[0];
+    else 
+        string->wizV.value.strValue[string->size - 1] = charElement->value.charVal;
     string->wizV.value.strValue[string->size] = '\0';
 }
