@@ -1,1 +1,0 @@
-read("scratch.txt").echo()

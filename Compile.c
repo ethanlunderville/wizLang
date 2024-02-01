@@ -23,18 +23,38 @@
 #include "Error.h"
 #include "Switchboard.h"
 
+#include <sys/stat.h>
+
+#ifdef _WIN32
+#define FILE_SEPARATOR '\\'
+#else
+#define FILE_SEPARATOR '/'
+#endif
+
 extern long programListSize;
 extern struct opCode * program;
 extern struct TokenStruct * programList;
 extern char currentPath[PATH_MAX];
 extern int basePathSize;
 
-void initFilePathHolders() {
+void initFilePathHolders(char * fPath) {
     memset(currentPath,'\0', PATH_MAX);
-    if (getcwd(currentPath, PATH_MAX) == NULL)
-        FATAL_ERROR(IO, -1 , "Error getting current directory");
-    basePathSize = strlen(currentPath);
-    printf("%s\n", currentPath);
+    basePathSize = strlen(fPath);
+    if (basePathSize > PATH_MAX)
+        FATAL_ERROR(IO,-1,"File path of provided source file is too large");
+    memcpy(currentPath, fPath, basePathSize);
+    if (fPath[basePathSize-1] == FILE_SEPARATOR) 
+        return;
+    for (int i = basePathSize - 1 ; i > -1 ; i--) {
+        if (fPath[i] == FILE_SEPARATOR){
+            memset(currentPath + i + 1,'\0', basePathSize - ((i + currentPath) - currentPath) - 1);
+            basePathSize = i+1;
+            return; 
+        }
+    }
+    currentPath[0] = '.';
+    currentPath[1] = FILE_SEPARATOR;
+    basePathSize = 2;
 }
 
 /* Functions to read the file into a single buffer */
@@ -54,12 +74,19 @@ long getFileSize(FILE *file) {
 
 */
 
+void checkIsDir(char * fileName) {
+    struct stat path_stat;
+    if (stat(fileName, &path_stat) == 0 && S_ISDIR(path_stat.st_mode))
+        FATAL_ERROR(IO, -1, "Attempted to open directory: %s as a file", fileName);
+}
+
 char* fileToBuffer(char * fileName) {
+    checkIsDir(fileName);
     FILE *file = fopen(fileName, "rb");
     if (file == NULL) 
         FATAL_ERROR(IO, -1, "Unable to open file: %s", fileName);
     long fileSize = getFileSize(file);
-    char *buffer = (char *) malloc(fileSize + 1);
+    char * buffer = (char *) malloc(fileSize + 1);
     programList = (struct TokenStruct *) malloc((sizeof(struct TokenStruct) * BASE_PROGRAM_LIST_SIZE));
     buffer[fileSize] = '\0';
     fread(buffer, 1, fileSize, file);
@@ -67,10 +94,10 @@ char* fileToBuffer(char * fileName) {
     return buffer;
 }
 
-int main (int argc, char * argv[]) {
-    if (argc < 2) d
+int main(int argc, char * argv[]) {
+    if (argc < 2)
         FATAL_ERROR(IO, -1, "Source file not provided");
-    initFilePathHolders(); 
+    initFilePathHolders(argv[1]); 
     char* buffer = fileToBuffer(argv[1]);
     setErrorFile(buffer);
 #ifdef OUTPUT_FILE

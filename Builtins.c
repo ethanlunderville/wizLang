@@ -29,7 +29,7 @@ int jPrinterOn = 0;
 char doubleFormatingBuffer[DOUBLE_FORMAT_SIZE];
 
 char currentPath[PATH_MAX];
-int basePathSize = 0;
+int basePathSize;
 
 extern struct wizObject* stack;
 extern struct wizObject nullV;
@@ -43,7 +43,6 @@ BuiltInFunctionPtr getBuiltin(char * funcName) {
     if (strcmp("type", funcName)==0) return &fType;
     if (strcmp("read", funcName)==0) return &fRead;
     if (strcmp("write", funcName)==0) return &fWrite;
-    if (strcmp("append", funcName)==0) return &fAppend;
     return 0;
 }
 
@@ -186,17 +185,39 @@ void * fType(long lineNo) {
 }
 
 void buildPath(char * rPath) {
-    memset(currentPath + basePathSize,'\0', PATH_MAX - basePathSize);
-
+    int rPathSize = strlen(rPath);
+    memset(currentPath + basePathSize, '\0' , PATH_MAX - basePathSize);
+    if (basePathSize + rPathSize > PATH_MAX)
+        FATAL_ERROR(IO, -1, "Internal error file path string was too long when appended to base path");
+    memcpy(currentPath + basePathSize, rPath, rPathSize);
 }
 
 char* fileToBuffer(char * fileName);
+void checkIsDir(char * fileName);
 
 void* fRead(long lineNo) {
-    struct wizObject * path = pop(); 
-    struct wizList * fileBuff = initWizString(fileToBuffer(path->value.strValue));
+    struct wizObject * path = pop();
+    printf("read: %s\n", path->value.strValue);
+    printf("base: %s\n", currentPath); 
+    buildPath(path->value.strValue);
+    printf("after: %s\n", currentPath);
+    struct wizList * fileBuff = initWizString(fileToBuffer(currentPath));
     pushInternal((struct wizObject *)fileBuff);
     cleanWizObject(path);
 }
-void* fWrite() {}
-void* fAppend() {}
+
+void* fWrite(long lineNo) {
+    struct wizObject * str = pop();
+    struct wizObject * file = pop();
+    printf("read: %s\n", file->value.strValue);
+    printf("base: %s\n", currentPath); 
+    buildPath(file->value.strValue);  
+    printf("after: %s\n", currentPath);
+    checkIsDir(currentPath);  
+    FILE * filePointer = fopen(currentPath, "w");
+    if (filePointer == NULL)
+        FATAL_ERROR(IO, -1, "Unable to open file: %s", currentPath);
+    fputs(str->value.strValue, filePointer);
+    fclose(filePointer);
+    pushInternal(&nullV);
+}

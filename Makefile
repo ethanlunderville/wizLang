@@ -2,6 +2,7 @@ CC = gcc
 CFLAGS = -g
 SRC = *.c -lm
 OUT = a.out
+FILE = Scratch/test.rs
 
 .PHONY: all run debug vrun clean
 
@@ -11,13 +12,13 @@ $(OUT): $(SRC)
 	$(CC) $(CFLAGS) $^ -o $@
 
 run: clean $(OUT)
-	./$(OUT) test.rs
+	./$(OUT) $(FILE)
 
-debug: $(OUT)
-	gdb ./$(OUT)
+debug: $(OUT) $(FILE)
+	gdb --args ./$(OUT) $(FILE)
 
 vrun: $(OUT)
-	valgrind --leak-check=full --show-leak-kinds=all ./$(OUT)
+	valgrind --leak-check=full --show-leak-kinds=all ./$(OUT) $(FILE)
 
 clean:
-	rm -f $(OUT)
+	rm -f $(OUT) 

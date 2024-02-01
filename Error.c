@@ -32,11 +32,11 @@ void setErrorFile(char* buffer) {
 
 void FATAL_ERROR(enum ErrorType err, long line, const char* format, ...) {
     switch (err) {
-        case PARSE: printf("\033[1;31m PARSE ERROR :: \033[0m"); break;
-        case CODEGEN: printf("\033[1;31m CODEGEN ERROR :: \033[0m"); break;
-        case RUNTIME: printf("\033[1;31m RUNTIME ERROR :: \033[0m"); break;
-        case LANGUAGE: printf("\033[1;31m LANGUAGE ERROR :: \033[0m"); break;
-        case IO: printf("\033[1;31m IO ERROR :: \033[0m"); break;
+        case PARSE: printf("\033[1;31mPARSE ERROR :: \033[0m"); break;
+        case CODEGEN: printf("\033[1;31mCODEGEN ERROR :: \033[0m"); break;
+        case RUNTIME: printf("\033[1;31mRUNTIME ERROR :: \033[0m"); break;
+        case LANGUAGE: printf("\033[1;31mLANGUAGE ERROR :: \033[0m"); break;
+        case IO: printf("\033[1;31mIO ERROR :: \033[0m"); break;
     }
     printf("\033[1;31m");
     va_list args;
