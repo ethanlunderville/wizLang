@@ -1,1 +1,1 @@
-echo(stdin("prompt> ").match("s"))
+"mstjsl".split("").echo()

@@ -314,9 +314,6 @@ void* fInput(long lineNo) {
     pushInternal((struct wizObject*) initWizString(str));
 }
 
-extern struct RegexSizer * regexSpans;
-extern int regexSpansSize;
-
 void* fMatch(long lineNo) {
     struct wizObject * wizReg = pop();
     struct wizObject * wizStr = pop();
@@ -330,8 +327,41 @@ void* fMatch(long lineNo) {
 
 void* fReplace(long lineNo) {
 
+
+
 }
 
-void* fSplit(long lineNo) {
+extern struct RegexSizer regexSpans[MAX_MATCH_SIZE];
+extern int regexSpansSize;
 
+void* fSplit(long lineNo) {
+    int i = 0;
+    int newStrLen;
+    struct wizObject * wizReg = pop();
+    struct wizObject * wizStr = pop();
+    if (wizReg->type != STRINGTYPE || wizStr->type != STRINGTYPE)
+        FATAL_ERROR(RUNTIME, lineNo, "Arguments to split() function must be strings");
+    regexOffset(wizStr->value.strValue, wizReg->value.strValue);
+    newStrLen = strlen(wizStr->value.strValue);
+    for (i = 0 ; i < regexSpansSize ; i++)
+        newStrLen -= (regexSpans[i].high - regexSpans[i].low);
+    char * rawStr = (char*) malloc(newStrLen+1);
+    rawStr[newStrLen] = '\0';
+    int targetOffset = 0;
+    int lastHighVal = 0;
+    
+    char * currStr;
+    for (i = 0 ; i < regexSpansSize ; i++) {
+        strncpy(
+            rawStr + targetOffset, 
+            wizStr->value.strValue + lastHighVal, 
+            regexSpans[i].low - lastHighVal);
+        targetOffset += regexSpans[i].low - lastHighVal;
+        lastHighVal = regexSpans[i].high;
+    }
+    strncpy(rawStr + targetOffset, 
+            wizStr->value.strValue + lastHighVal, 
+            strlen(wizStr->value.strValue) - lastHighVal);
+    printf("%s\n", rawStr);
+    pushInternal(&nullV);
 }

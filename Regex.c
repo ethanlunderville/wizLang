@@ -8,15 +8,18 @@
 struct RegexSizer regexSpans[MAX_MATCH_SIZE * sizeof(struct RegexSizer)];
 int regexSpansSize = 0;
 
-void addRegexSize(int low, int high) {
+int addRegexSize(int low, int high) {
+    if (regexSpansSize > MAX_MATCH_SIZE)
+        return 0;
     regexSpans[regexSpansSize].low = low;
     regexSpans[regexSpansSize].high = high;
     regexSpansSize++;
+    return 1;
 }
 
 void regexOffset(char *string, char *regex) {
     int stringL = strlen(string);
-    int i, begin, end, offset = 0, j = 0, actualOffset = 0;                 
+    int begin, end, offset = 0, actualOffset = 0;                 
     regex_t rgT; 
     regmatch_t match;
     regcomp(&rgT,regex,REG_EXTENDED);
@@ -24,17 +27,15 @@ void regexOffset(char *string, char *regex) {
     memset(regexSpans, '\0', MAX_MATCH_SIZE * sizeof(struct RegexSizer));
     while (offset < stringL) {
         string = string + offset;
-        if ((regexec(&rgT, string, 1, &match, 0)) != 0)
-            break;
-        j = 0;
+        if ((regexec(&rgT, string, 1, &match, 0)) != 0) break;
         begin = (int) match.rm_so;
-        printf("B: %i ", actualOffset + begin);
         end = (int) match.rm_eo;
-        printf("E: %i \n", actualOffset + end);
-        addRegexSize(begin, end);
+        if (addRegexSize(actualOffset + begin, actualOffset + end) == 0) break;
         offset = end;
-        actualOffset += (end - begin); 
+        actualOffset += end; 
     }
+    for (int i = 0 ; i < regexSpansSize ; i++)
+        printf("%i : %i\n", regexSpans[i].low ,regexSpans[i].high);
     regfree(&rgT);
 }
 
@@ -42,7 +43,7 @@ struct wizList * regexMatch(char *string, char *regex) {
     struct wizList * list = initList(1);
     char * stringWiz;
     int stringL = strlen(string);
-    int i, begin, end, len, offset = 0, j = 0, actualOffset = 0;                 
+    int i, begin, end, len, offset = 0, j = 0;                 
     regex_t rgT; 
     regmatch_t match;
     regcomp(&rgT,regex,REG_EXTENDED);
@@ -60,9 +61,11 @@ struct wizList * regexMatch(char *string, char *regex) {
             stringWiz[j] = string[i];
             j++; 
         }
-        appendToWizList(list, (struct wizObject*)initWizString(stringWiz));
+        appendToWizList(
+            list, 
+            (struct wizObject*)initWizString(stringWiz)
+        );
         offset = end;
-        actualOffset += (end - begin);
     }
     regfree(&rgT);
     return list;

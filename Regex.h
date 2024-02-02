@@ -10,7 +10,7 @@ struct wizList;
 
 #define MAX_MATCH_SIZE 1000
 
-void addRegexSize(int low, int high);
+int addRegexSize(int low, int high);
 void regexOffset(char *string, char *regex);
 struct wizList * regexMatch(char *string, char *regex);
 
