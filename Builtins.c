@@ -325,14 +325,41 @@ void* fMatch(long lineNo) {
     cleanWizObject(wizStr);
 }
 
-void* fReplace(long lineNo) {
-
-
-
-}
-
 extern struct RegexSizer regexSpans[MAX_MATCH_SIZE];
 extern int regexSpansSize;
+
+void* fReplace(long lineNo) {
+    int i = 0;
+    int newStrLen;
+    struct wizObject * wizReplacement = pop();
+    struct wizObject * wizReg = pop();
+    struct wizObject * wizStr = pop();
+    if (wizReg->type != STRINGTYPE || wizStr->type != STRINGTYPE || wizReplacement->type != STRINGTYPE)
+        FATAL_ERROR(RUNTIME, lineNo, "Arguments to replace() function must be strings");
+    regexOffset(wizStr->value.strValue, wizReg->value.strValue);
+    newStrLen = strlen(wizStr->value.strValue);
+    int wizReplaceSize = strlen(wizReplacement->value.strValue);
+    for (i = 0 ; i < regexSpansSize ; i++) {
+        newStrLen -= (regexSpans[i].high - regexSpans[i].low);
+        newStrLen += wizReplaceSize;
+    }
+    char * rawStr = (char*) malloc(newStrLen+1);
+    rawStr[newStrLen] = '\0';
+    int targetOffset = 0;
+    int lastHighVal = 0;
+    
+    char * currStr;
+    for (i = 0 ; i < regexSpansSize ; i++) {
+        strncpy(rawStr + targetOffset, wizStr->value.strValue + lastHighVal, regexSpans[i].low - lastHighVal);
+        targetOffset += regexSpans[i].low - lastHighVal;
+        strncpy(rawStr + targetOffset ,wizReplacement->value.strValue,wizReplaceSize);
+        targetOffset += wizReplaceSize;
+        lastHighVal = regexSpans[i].high;
+    }
+    strncpy(rawStr + targetOffset, wizStr->value.strValue + lastHighVal, strlen(wizStr->value.strValue) - lastHighVal);
+    printf("%s\n", rawStr);
+    pushInternal(&nullV);
+}
 
 void* fSplit(long lineNo) {
     int i = 0;
@@ -345,23 +372,31 @@ void* fSplit(long lineNo) {
     newStrLen = strlen(wizStr->value.strValue);
     for (i = 0 ; i < regexSpansSize ; i++)
         newStrLen -= (regexSpans[i].high - regexSpans[i].low);
-    char * rawStr = (char*) malloc(newStrLen+1);
-    rawStr[newStrLen] = '\0';
     int targetOffset = 0;
     int lastHighVal = 0;
-    
     char * currStr;
+    int copyAmount;
+    struct wizList* list = initList(regexSpansSize);
     for (i = 0 ; i < regexSpansSize ; i++) {
-        strncpy(
-            rawStr + targetOffset, 
-            wizStr->value.strValue + lastHighVal, 
-            regexSpans[i].low - lastHighVal);
-        targetOffset += regexSpans[i].low - lastHighVal;
+        copyAmount = (regexSpans[i].low - lastHighVal);
+        if (copyAmount == 0) {
+            lastHighVal = regexSpans[i].high;
+            continue;
+        }
+        currStr = (char*) malloc(copyAmount + 1);
+        currStr[copyAmount] = '\0';
+        strncpy(currStr, wizStr->value.strValue + lastHighVal, copyAmount);
+        appendToWizList(list, (struct wizObject*) initWizString(currStr));
         lastHighVal = regexSpans[i].high;
     }
-    strncpy(rawStr + targetOffset, 
-            wizStr->value.strValue + lastHighVal, 
-            strlen(wizStr->value.strValue) - lastHighVal);
-    printf("%s\n", rawStr);
-    pushInternal(&nullV);
+    copyAmount = strlen(wizStr->value.strValue) - lastHighVal;
+    if (copyAmount == 0) {
+        pushInternal((struct wizObject *)list);    
+        return NULL;
+    }
+    currStr = (char*) malloc(copyAmount + 1);
+    currStr[copyAmount] = '\0';
+    strncpy(currStr, wizStr->value.strValue + lastHighVal, copyAmount);
+    appendToWizList(list, (struct wizObject*) initWizString(currStr));
+    pushInternal((struct wizObject *)list);
 }
