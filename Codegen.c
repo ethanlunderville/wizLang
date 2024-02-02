@@ -243,8 +243,10 @@ void codeGenWalker(struct AST * aTree) {
             }
         case UNARY:
             {
+            union TypeStore value;
+            value.opValue = getToken(aTree);
             traverseChildren(aTree);
-            programAdder(aTree, unaryFlip , nullVal,-1);
+            programAdder(aTree, unaryFlip , value, UNARY);
             break;
             }
         case BINOP:

@@ -80,6 +80,8 @@ void cleanWizObject(struct wizObject* wiz);
 
 long fetchCurrentLine();
 
+long remainingArgumentNumber();
+
 struct wizObject * fetchArg(long opCodeIndex);
 struct opCode * codeGen(struct AST * aTree);
 void codeGenWalker(struct AST * aTree);

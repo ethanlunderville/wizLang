@@ -1,1 +1,1 @@
-11"
+echo(stdin("prompt> ").match("s"))

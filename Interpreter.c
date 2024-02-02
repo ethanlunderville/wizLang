@@ -97,6 +97,10 @@ long peekCounterStack(struct lineCounterStack* counterStack) {
     return counterStack->stack[counterStack->stackSize-1];
 }
 
+long remainingArgumentNumber() {
+    return stackSize - peekCounterStack(&stackFrames); 
+}
+
 // Stack dumper for debugging.
 
 int dumpStack() {
@@ -415,7 +419,7 @@ void * buildList() {
     struct wizList * list;
     int elementCount = (int)fetchArg(instructionIndex)->value.numValue;
     if (elementCount == 0)
-        list = initList(elementCount + 1);
+        list = initList(1);
     else
         list = initList(elementCount);
     for (int i = 0 ; i < elementCount; i++)
@@ -472,7 +476,14 @@ void * unaryFlip() {
     if (wizOb->type != NUMBER)
         FATAL_ERROR(RUNTIME, fetchCurrentLine(), "Attempted to negate non-numeric value");
     struct wizObject* newObj = initWizObject(wizOb->type);
-    newObj->value.numValue = -(wizOb->value.numValue);
+    if (fetchArg(instructionIndex)->value.opValue == SUBTRACT) { 
+        newObj->value.numValue = -(wizOb->value.numValue);
+    } else {
+        if (wizOb->value.numValue == 0)
+            newObj->value.numValue = 1;
+        else 
+            newObj->value.numValue = 0;
+    }
     pushInternal(newObj);
     cleanWizObject(wizOb);
 }

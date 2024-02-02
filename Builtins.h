@@ -13,4 +13,12 @@ void* fType();
 void* fRead();
 void* fWrite();
 void* fAppend();
+void* fClear();
+void* fPop();
+void* fNum();
+void* fString(); 
+void* fMatch();
+void* fReplace();
+void* fSplit();
+void* fInput();
 #endif

@@ -21,6 +21,7 @@
 #include "DataStructures.h"
 #include "Error.h"
 #include "Mem.h"
+#include "Regex.h"
 
 int treeIndent = 0;
 int jsonPrinterLeft = 0;
@@ -43,6 +44,14 @@ BuiltInFunctionPtr getBuiltin(char * funcName) {
     if (strcmp("type", funcName)==0) return &fType;
     if (strcmp("read", funcName)==0) return &fRead;
     if (strcmp("write", funcName)==0) return &fWrite;
+    if (strcmp("pop", funcName)==0) return &fPop;
+    if (strcmp("clear", funcName)==0) return &fClear;
+    if (strcmp("num", funcName)==0) return &fNum;
+    if (strcmp("string", funcName)==0) return &fString;
+    if (strcmp("match", funcName)==0) return &fMatch;
+    if (strcmp("replace", funcName)==0) return &fReplace;
+    if (strcmp("split", funcName)==0) return &fSplit;
+    if (strcmp("stdin", funcName)==0) return &fInput;
     return 0;
 }
 
@@ -133,13 +142,21 @@ void* fEchoH() {
         jPrinterOn = 0;
         }
     }
-    cleanWizObject(val);
     pushInternal(&nullV);
+    cleanWizObject(val);
 }
 
 void* fEcho(long lineNo) {
-    fEchoH();
-    printf("\n");
+    if (remainingArgumentNumber() == 2) {
+        struct wizObject * endStr = pop();
+        fEchoH();
+        if (endStr->type != STRINGTYPE)
+            FATAL_ERROR(RUNTIME, lineNo, "String terminator in echo() function must be a string type");
+        printf("%s", endStr->value.strValue);
+    } else {
+        fEchoH();
+        printf("\n");
+    }
 }
 
 void* fPush(long lineNo) {
@@ -209,10 +226,10 @@ void* fRead(long lineNo) {
 void* fWrite(long lineNo) {
     struct wizObject * str = pop();
     struct wizObject * file = pop();
-    printf("read: %s\n", file->value.strValue);
-    printf("base: %s\n", currentPath); 
+    //printf("read: %s\n", file->value.strValue);
+    //printf("base: %s\n", currentPath); 
     buildPath(file->value.strValue);  
-    printf("after: %s\n", currentPath);
+    //printf("after: %s\n", currentPath);
     checkIsDir(currentPath);  
     FILE * filePointer = fopen(currentPath, "w");
     if (filePointer == NULL)
@@ -220,4 +237,101 @@ void* fWrite(long lineNo) {
     fputs(str->value.strValue, filePointer);
     fclose(filePointer);
     pushInternal(&nullV);
+}
+
+void* fClear(long lineNo) {
+    struct wizList * list; 
+    struct wizObject * _list = pop();
+    if (_list->type != LIST)
+        FATAL_ERROR(RUNTIME, lineNo, "Unable to clear non-list datatype");
+    list = (struct wizList*) _list;
+    while (list->size != 0) {
+        decRef(_list->value.listVal[list->size-1]);
+        list->size--;
+    } 
+    pushInternal(_list);
+}
+
+void* fPop(long lineNo) {
+    struct wizList * list; 
+    struct wizObject * _list = pop();
+    if (_list->type != LIST && _list->type != STRINGTYPE)
+        FATAL_ERROR(RUNTIME, lineNo, "Unable to pop non-list or non-string datatype");
+    list = (struct wizList*) _list;
+    if (_list->type == LIST)
+        decRef(_list->value.listVal[list->size-1]);
+    else 
+        _list->value.strValue[list->size-1] = '\0';
+    list->size--;
+    pushInternal(_list);
+}
+
+void* fNum(long lineNo) {
+    struct wizObject * str = pop();
+    struct wizObject * num;
+    if (str->type != STRINGTYPE)
+        FATAL_ERROR(RUNTIME, lineNo, "Unable to convert non-string type to number");    
+    num = initWizObject(NUMBER);
+    num->value.numValue = atof(str->value.strValue);
+    pushInternal(num);   
+}
+
+void* fString(long lineNo) {
+    struct wizObject * num = pop();
+    struct wizList * str;
+    int strSize;
+    int maxLength;
+    char * strVal;
+    if (num->type != NUMBER) 
+        FATAL_ERROR(RUNTIME, lineNo, "Unable to convert non-numeric type to string");
+    memset(doubleFormatingBuffer,'\0', DOUBLE_FORMAT_SIZE);
+    maxLength = snprintf(NULL, 0, "%f", num->value.numValue) + 1;
+    snprintf(doubleFormatingBuffer, maxLength, "%f", num->value.numValue);
+    if (floatStrContainsDecimal(doubleFormatingBuffer))
+        removeZerosFromDoubleString(doubleFormatingBuffer);
+    strSize = strlen(doubleFormatingBuffer);
+    strVal = malloc(strSize + 1);
+    strVal[strSize] = '\0';
+    strncpy(strVal, doubleFormatingBuffer, strSize); 
+    str = initWizString(strVal);
+    pushInternal((struct wizObject*)str);
+}
+
+#define INPUT_BASE_SIZE 1000
+
+void* fInput(long lineNo) {
+    struct wizObject * prompt;
+    if (remainingArgumentNumber() == 1) {
+        prompt = pop();
+        if (prompt->type != STRINGTYPE)
+            FATAL_ERROR(RUNTIME, lineNo, "Unable to use non-string data type as a prompt in stdin()");
+        printf("%s", prompt->value.strValue);
+    }
+    char inBuff[INPUT_BASE_SIZE];
+    fgets(inBuff, INPUT_BASE_SIZE, stdin);
+    inBuff[strcspn(inBuff,"\n")] = '\0';
+    char * str = copyStr(inBuff);
+    pushInternal((struct wizObject*) initWizString(str));
+}
+
+extern struct RegexSizer * regexSpans;
+extern int regexSpansSize;
+
+void* fMatch(long lineNo) {
+    struct wizObject * wizReg = pop();
+    struct wizObject * wizStr = pop();
+    if (wizReg->type != STRINGTYPE || wizStr->type != STRINGTYPE)
+        FATAL_ERROR(RUNTIME, lineNo, "Arguments to match() function must be strings");
+    struct wizList * t = regexMatch(wizStr->value.strValue, wizReg->value.strValue);
+    pushInternal((struct wizObject *)t);
+    cleanWizObject(wizReg);
+    cleanWizObject(wizStr);
+}
+
+void* fReplace(long lineNo) {
+
+}
+
+void* fSplit(long lineNo) {
+
 }

@@ -289,7 +289,7 @@ void lex(char* buffer, struct TokenStruct * programList) {
                 i++;
                 addToProgramList("!=",BINOP,lineNo,NOTEQUAL);
             } else {
-                addToProgramList("!", BINOP, lineNo ,SUBTRACT); 
+                addToProgramList("!", BINOP, lineNo ,EXCLAIM); 
             }
             break;
         }
@@ -862,7 +862,7 @@ bool onConditionalToken() {
 }
 
 bool onUnary() {
-    return isCurrentToken(SUBTRACT);
+    return isCurrentToken(SUBTRACT) || isCurrentToken(EXCLAIM);
 }
 
 // Parser ulility
