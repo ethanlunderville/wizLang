@@ -128,6 +128,8 @@ int removeZerosFromDoubleString(char * str);
 void plusOp();
 void assignOp();
 void powerOp();
+void matchOp();
+
 void jengaMomentLoL();
 
 const char* getTypeString(enum Types type);
@@ -145,5 +147,7 @@ void mapLValueProcessor(
     struct wizObject * offsetWiz,
     long lineNo
 );
+
+int onStack(struct wizObject * val);
 
 #endif

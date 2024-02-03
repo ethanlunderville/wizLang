@@ -110,6 +110,7 @@ char* getOperationString(enum Tokens op) {
         case PIPE: return " |";
         case EQUAL: return " ==";
         case NOTEQUAL: return " !=";
+        case MATCH: return " =~";
         default: FATAL_ERROR(
             LANGUAGE,
             -1, 

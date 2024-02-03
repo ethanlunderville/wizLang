@@ -149,6 +149,14 @@ void jengaMomentLoL(int stackElementIndex) {
     stackSize--;
 }
 
+
+int onStack(struct wizObject * val) {
+    for (int i = 0 ; i < stackSize ; i++) 
+        if (stack[i] == val)
+            return 1;
+    return 0;
+}
+
 // Pops a value off of the Runtime Stack.
 
 struct wizObject* pop() {
@@ -255,6 +263,7 @@ void* binOpCode() {
     enum Tokens operation = fetchArg(instructionIndex)->value.opValue;
     switch (operation) {
         case PIPE: break;
+        case MATCH: matchOp(); break;
         case ADD: plusOp(); break;
         case POWER: powerOp(); break;
         case ASSIGNMENT: assignOp(); break;
@@ -294,6 +303,7 @@ void* targetOffset() {
         mapRValueProcessor(keys, values, offsetWiz, fetchCurrentLine());
     }
     cleanWizObject(offsetWiz);
+    //@important See if this causes a leak
     cleanWizObject(continuosDataWiz);
 }
 

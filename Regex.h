@@ -7,11 +7,13 @@ struct RegexSizer {
 };
 
 struct wizList;
+struct wizObject;
 
 #define MAX_MATCH_SIZE 1000
 
 int addRegexSize(int low, int high);
-void regexOffset(char *string, char *regex);
-struct wizList * regexMatch(char *string, char *regex);
+void regexOffset(char * string, char * regex);
+struct wizList * regexMatch(char * string, char * regex);
+struct wizObject* regexDoesMatch(char * string, char * regex);
 
 #endif

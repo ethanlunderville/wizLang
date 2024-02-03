@@ -17,6 +17,7 @@
 #include "Context.h"
 #include "Error.h"
 #include "DataStructures.h"
+#include "Regex.h"
 
 extern long instructionIndex;
 extern struct opCode * program;
@@ -33,22 +34,22 @@ void cleanWizObject(struct wizObject* wiz) {
         FATAL_ERROR(LANGUAGE, -1, "NULL passed to cleanWiz"); 
     if (wiz->referenceCount != 0)
         return;
-    if (wiz->type == STRINGTYPE){
+    if (wiz->type == STRINGTYPE && !onStack(wiz)){
         free(wiz->value.strValue);
         free(wiz);
-    } else if (wiz->type == LIST){
+    } else if (wiz->type == LIST && !onStack(wiz)){
         struct wizList * list = (struct wizList*)wiz;
         for (int i = 0 ; i < list->size ; i++)
             decRef(wiz->value.listVal[i]);
         free(list->wizV.value.listVal);
         free(list);
         return;
-    } else if (wiz->type == DICTIONARY) {
+    } else if (wiz->type == DICTIONARY && !onStack(wiz)) {
         struct wizDict * dict = (struct wizDict*)wiz;
         decRef((struct wizObject *)dict->keys);
         decRef((struct wizObject *)dict->values);
         free(dict);
-    } else {
+    } else if (!onStack(wiz)) {
         free(wiz);
     }
 }
@@ -79,7 +80,6 @@ int translateIndex(int index, int size) {
     int newIndex = size - (abs(index) % size);
     if (newIndex - size == 0) return 0; else return newIndex;
 }
-
 
 // HELPERS
 
@@ -120,6 +120,15 @@ const char* getTypeString(enum Types type) {
         case NONE: return "NONE";
         default: return "Invalid enum value";
     }
+}
+
+void matchOp() {
+    struct wizObject * regex = pop();
+    struct wizObject * other = pop();
+    //@change :: add a line number to the error
+    if (regex->type != STRINGTYPE || other->type != STRINGTYPE)
+        FATAL_ERROR(RUNTIME, -1, "=~ operands may only be strings");
+    pushInternal(regexDoesMatch(other->value.strValue, regex->value.strValue));
 }
 
 void assignOp() {

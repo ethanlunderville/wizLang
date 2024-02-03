@@ -24,6 +24,7 @@ enum Tokens {
     /*BEGIN OPERATORS*/
     BEGINOPERATORS,
     ASSIGNMENT,
+    MATCH,
     PIPE,
     EQUAL,
     NOTEQUAL,

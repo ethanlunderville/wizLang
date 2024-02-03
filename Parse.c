@@ -297,6 +297,9 @@ void lex(char* buffer, struct TokenStruct * programList) {
             if (checkNext(buffer,i,'=')) {
                 i++;
                 addToProgramList("==",BINOP,lineNo,EQUAL);
+            } else if (checkNext(buffer,i,'~')) {
+                i++;
+                addToProgramList("=~",BINOP,lineNo,MATCH);
             } else {
                 addToProgramList("=", BINOP, lineNo, ASSIGNMENT);
             }     

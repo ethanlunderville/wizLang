@@ -21,4 +21,5 @@ void* fMatch();
 void* fReplace();
 void* fSplit();
 void* fInput();
+void* fSystem();
 #endif

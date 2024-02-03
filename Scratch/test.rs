@@ -1,1 +1,2 @@
-replace("this is a test","this","").echo()
+if ("hell0"=~"ss")
+    echo(1)

@@ -52,6 +52,7 @@ BuiltInFunctionPtr getBuiltin(char * funcName) {
     if (strcmp("replace", funcName)==0) return &fReplace;
     if (strcmp("split", funcName)==0) return &fSplit;
     if (strcmp("stdin", funcName)==0) return &fInput;
+    if (strcmp("system", funcName)==0) return &fSystem;
     return 0;
 }
 
@@ -262,8 +263,8 @@ void* fPop(long lineNo) {
         decRef(_list->value.listVal[list->size-1]);
     else 
         _list->value.strValue[list->size-1] = '\0';
+    pushInternal(_list->value.listVal[list->size-1]);
     list->size--;
-    pushInternal(_list);
 }
 
 void* fNum(long lineNo) {
@@ -274,6 +275,7 @@ void* fNum(long lineNo) {
     num = initWizObject(NUMBER);
     num->value.numValue = atof(str->value.strValue);
     pushInternal(num);   
+    cleanWizObject(str);
 }
 
 void* fString(long lineNo) {
@@ -306,6 +308,7 @@ void* fInput(long lineNo) {
         if (prompt->type != STRINGTYPE)
             FATAL_ERROR(RUNTIME, lineNo, "Unable to use non-string data type as a prompt in stdin()");
         printf("%s", prompt->value.strValue);
+        cleanWizObject(prompt);
     }
     char inBuff[INPUT_BASE_SIZE];
     fgets(inBuff, INPUT_BASE_SIZE, stdin);
@@ -319,6 +322,12 @@ void* fMatch(long lineNo) {
     struct wizObject * wizStr = pop();
     if (wizReg->type != STRINGTYPE || wizStr->type != STRINGTYPE)
         FATAL_ERROR(RUNTIME, lineNo, "Arguments to match() function must be strings");
+    if (strcmp(wizReg->value.strValue, "") == 0) {
+        cleanWizObject(wizReg);
+        cleanWizObject(wizStr);
+        pushInternal((struct wizObject*)initList(1));
+        return NULL;
+    }
     struct wizList * t = regexMatch(wizStr->value.strValue, wizReg->value.strValue);
     pushInternal((struct wizObject *)t);
     cleanWizObject(wizReg);
@@ -336,6 +345,12 @@ void* fReplace(long lineNo) {
     struct wizObject * wizStr = pop();
     if (wizReg->type != STRINGTYPE || wizStr->type != STRINGTYPE || wizReplacement->type != STRINGTYPE)
         FATAL_ERROR(RUNTIME, lineNo, "Arguments to replace() function must be strings");
+    if (strcmp(wizReg->value.strValue, "") == 0) {
+        pushInternal(wizStr);
+        cleanWizObject(wizReplacement);
+        cleanWizObject(wizReg);
+        return NULL;
+    }
     regexOffset(wizStr->value.strValue, wizReg->value.strValue);
     newStrLen = strlen(wizStr->value.strValue);
     int wizReplaceSize = strlen(wizReplacement->value.strValue);
@@ -347,7 +362,6 @@ void* fReplace(long lineNo) {
     rawStr[newStrLen] = '\0';
     int targetOffset = 0;
     int lastHighVal = 0;
-    
     char * currStr;
     for (i = 0 ; i < regexSpansSize ; i++) {
         strncpy(rawStr + targetOffset, wizStr->value.strValue + lastHighVal, regexSpans[i].low - lastHighVal);
@@ -357,8 +371,10 @@ void* fReplace(long lineNo) {
         lastHighVal = regexSpans[i].high;
     }
     strncpy(rawStr + targetOffset, wizStr->value.strValue + lastHighVal, strlen(wizStr->value.strValue) - lastHighVal);
-    printf("%s\n", rawStr);
-    pushInternal(&nullV);
+    pushInternal((struct wizObject *)initWizString(rawStr));
+    cleanWizObject(wizReplacement);
+    cleanWizObject(wizReg);
+    cleanWizObject(wizStr);
 }
 
 void* fSplit(long lineNo) {
@@ -368,6 +384,11 @@ void* fSplit(long lineNo) {
     struct wizObject * wizStr = pop();
     if (wizReg->type != STRINGTYPE || wizStr->type != STRINGTYPE)
         FATAL_ERROR(RUNTIME, lineNo, "Arguments to split() function must be strings");
+    if (strcmp(wizReg->value.strValue, "") == 0) {
+        pushInternal(wizStr);
+        cleanWizObject(wizReg);
+        return NULL;
+    } 
     regexOffset(wizStr->value.strValue, wizReg->value.strValue);
     newStrLen = strlen(wizStr->value.strValue);
     for (i = 0 ; i < regexSpansSize ; i++)
@@ -391,7 +412,9 @@ void* fSplit(long lineNo) {
     }
     copyAmount = strlen(wizStr->value.strValue) - lastHighVal;
     if (copyAmount == 0) {
-        pushInternal((struct wizObject *)list);    
+        pushInternal((struct wizObject *)list);
+        cleanWizObject(wizStr);
+        cleanWizObject(wizReg);    
         return NULL;
     }
     currStr = (char*) malloc(copyAmount + 1);
@@ -399,4 +422,46 @@ void* fSplit(long lineNo) {
     strncpy(currStr, wizStr->value.strValue + lastHighVal, copyAmount);
     appendToWizList(list, (struct wizObject*) initWizString(currStr));
     pushInternal((struct wizObject *)list);
+    cleanWizObject(wizStr);
+    cleanWizObject(wizReg);
+}
+
+#define BASE_STD_OUT 1024
+
+void* fSystem(long lineNo) {
+    struct wizObject* arg = pop();
+    if (arg->type != STRINGTYPE)
+        FATAL_ERROR(RUNTIME, lineNo, "Argument to system() function must be a string");
+    FILE *fp;
+    char buffer[BASE_STD_OUT];
+    memset(buffer,'\0',BASE_STD_OUT);
+    char * outPutStr = (char * )malloc(BASE_STD_OUT);
+    int outSize = 0;
+    int outCapacity = BASE_STD_OUT;
+    fp = popen(arg->value.strValue, "r");
+    int copySize = 0;
+    while (fgets(buffer, sizeof(buffer) - 1, fp) != NULL) {
+        copySize = strlen(buffer);
+        while ((outSize + copySize) > outCapacity) {
+            outCapacity *= 2;
+            outPutStr = realloc(outPutStr, outCapacity);
+            memset(outPutStr + outSize,'\0',(outCapacity + outPutStr) - (outPutStr + outSize));
+        }
+        strncpy(outPutStr + outSize, buffer, copySize);
+        outSize += copySize;
+        memset(buffer,'\0',BASE_STD_OUT);
+    }
+    int status = pclose(fp);
+    char * code = copyStr("code");
+    char * out = copyStr("out");
+    struct wizList * keys = initList(2);
+    struct wizList * values = initList(2);
+    struct wizObject * exitCodeWiz = initWizObject(NUMBER);
+    exitCodeWiz->value.numValue = (double) status;
+    cleanWizObject(arg);
+    appendToWizList(keys, (struct wizObject*)initWizString(code));
+    appendToWizList(keys, (struct wizObject*)initWizString(out));
+    appendToWizList(values, (struct wizObject*)exitCodeWiz);
+    appendToWizList(values, (struct wizObject*)initWizString(outPutStr));
+    pushInternal((struct wizObject *)initDict(keys, values));
 }

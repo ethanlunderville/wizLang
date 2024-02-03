@@ -39,7 +39,21 @@ void regexOffset(char *string, char *regex) {
     regfree(&rgT);
 }
 
-struct wizList * regexMatch(char *string, char *regex) {  
+struct wizObject* regexDoesMatch(char * string, char * regex) {
+    regex_t rgT; 
+    regmatch_t match;
+    regcomp(&rgT,regex,REG_EXTENDED);
+    struct wizObject * t = initWizObject(NUMBER);
+    //NO MATCH
+    if ((regexec(&rgT, string, 1, &match, 0)) != 0) { 
+        t->value.numValue = 0;
+        return t;
+    }
+    t->value.numValue = 1;
+    return t;
+}
+
+struct wizList * regexMatch(char * string, char * regex) {  
     struct wizList * list = initList(1);
     char * stringWiz;
     int stringL = strlen(string);
