@@ -182,7 +182,8 @@ void* fPush(long lineNo) {
     // This will only work if the list identifier points to a string 
     // since the char being appended no longer needs to exist
     cleanWizObject(appender);
-    pushInternal(list);
+    //pushInternal(list);
+    pushInternal(&nullV);
 } 
 
 void * fType(long lineNo) {
@@ -340,29 +341,37 @@ extern int regexSpansSize;
 void* fReplace(long lineNo) {
     int i = 0;
     int newStrLen;
+    int targetOffset = 0;
+    int lastHighVal = 0;
+    char * currStr;
+    char * rawStr;
     struct wizObject * wizReplacement = pop();
     struct wizObject * wizReg = pop();
     struct wizObject * wizStr = pop();
+    int wizReplaceSize;
+
     if (wizReg->type != STRINGTYPE || wizStr->type != STRINGTYPE || wizReplacement->type != STRINGTYPE)
         FATAL_ERROR(RUNTIME, lineNo, "Arguments to replace() function must be strings");
+    
     if (strcmp(wizReg->value.strValue, "") == 0) {
         pushInternal(wizStr);
         cleanWizObject(wizReplacement);
         cleanWizObject(wizReg);
         return NULL;
     }
+    
     regexOffset(wizStr->value.strValue, wizReg->value.strValue);
     newStrLen = strlen(wizStr->value.strValue);
-    int wizReplaceSize = strlen(wizReplacement->value.strValue);
+    wizReplaceSize = strlen(wizReplacement->value.strValue);
+    
     for (i = 0 ; i < regexSpansSize ; i++) {
         newStrLen -= (regexSpans[i].high - regexSpans[i].low);
         newStrLen += wizReplaceSize;
     }
-    char * rawStr = (char*) malloc(newStrLen+1);
+    
+    rawStr = (char*) malloc(newStrLen+1);
     rawStr[newStrLen] = '\0';
-    int targetOffset = 0;
-    int lastHighVal = 0;
-    char * currStr;
+    
     for (i = 0 ; i < regexSpansSize ; i++) {
         strncpy(rawStr + targetOffset, wizStr->value.strValue + lastHighVal, regexSpans[i].low - lastHighVal);
         targetOffset += regexSpans[i].low - lastHighVal;
@@ -370,6 +379,7 @@ void* fReplace(long lineNo) {
         targetOffset += wizReplaceSize;
         lastHighVal = regexSpans[i].high;
     }
+    
     strncpy(rawStr + targetOffset, wizStr->value.strValue + lastHighVal, strlen(wizStr->value.strValue) - lastHighVal);
     pushInternal((struct wizObject *)initWizString(rawStr));
     cleanWizObject(wizReplacement);
@@ -380,8 +390,16 @@ void* fReplace(long lineNo) {
 void* fSplit(long lineNo) {
     int i = 0;
     int newStrLen;
-    struct wizObject * wizReg = pop();
-    struct wizObject * wizStr = pop();
+    int targetOffset = 0;
+    int lastHighVal = 0;
+    char * currStr;
+    int copyAmount;
+    struct wizList* list;
+    struct wizObject * wizReg;
+    struct wizObject * wizStr;
+    wizReg = pop();
+    wizStr = pop();
+    
     if (wizReg->type != STRINGTYPE || wizStr->type != STRINGTYPE)
         FATAL_ERROR(RUNTIME, lineNo, "Arguments to split() function must be strings");
     if (strcmp(wizReg->value.strValue, "") == 0) {
@@ -389,15 +407,23 @@ void* fSplit(long lineNo) {
         cleanWizObject(wizReg);
         return NULL;
     } 
+
     regexOffset(wizStr->value.strValue, wizReg->value.strValue);
+    
+    //if (regexSpansSize == 0) {
+    //    list = initList(1);
+    //    pushInternal((struct wizObject *)list);
+    //    cleanWizObject(wizStr);
+    //    cleanWizObject(wizReg);
+    //    return NULL;
+    //}
+
+    list = initList(regexSpansSize);
+
     newStrLen = strlen(wizStr->value.strValue);
     for (i = 0 ; i < regexSpansSize ; i++)
         newStrLen -= (regexSpans[i].high - regexSpans[i].low);
-    int targetOffset = 0;
-    int lastHighVal = 0;
-    char * currStr;
-    int copyAmount;
-    struct wizList* list = initList(regexSpansSize);
+    
     for (i = 0 ; i < regexSpansSize ; i++) {
         copyAmount = (regexSpans[i].low - lastHighVal);
         if (copyAmount == 0) {
@@ -405,18 +431,22 @@ void* fSplit(long lineNo) {
             continue;
         }
         currStr = (char*) malloc(copyAmount + 1);
+        memset(currStr, '\0', copyAmount + 1);
         currStr[copyAmount] = '\0';
         strncpy(currStr, wizStr->value.strValue + lastHighVal, copyAmount);
         appendToWizList(list, (struct wizObject*) initWizString(currStr));
         lastHighVal = regexSpans[i].high;
     }
+
     copyAmount = strlen(wizStr->value.strValue) - lastHighVal;
+
     if (copyAmount == 0) {
         pushInternal((struct wizObject *)list);
         cleanWizObject(wizStr);
         cleanWizObject(wizReg);    
         return NULL;
     }
+    br();
     currStr = (char*) malloc(copyAmount + 1);
     currStr[copyAmount] = '\0';
     strncpy(currStr, wizStr->value.strValue + lastHighVal, copyAmount);
@@ -429,18 +459,22 @@ void* fSplit(long lineNo) {
 #define BASE_STD_OUT 1024
 
 void* fSystem(long lineNo) {
-    struct wizObject* arg = pop();
-    if (arg->type != STRINGTYPE)
-        FATAL_ERROR(RUNTIME, lineNo, "Argument to system() function must be a string");
     FILE *fp;
-    char buffer[BASE_STD_OUT];
-    memset(buffer,'\0',BASE_STD_OUT);
-    char * outPutStr = (char * )malloc(BASE_STD_OUT);
     int outSize = 0;
     int outCapacity = BASE_STD_OUT;
-    fp = popen(arg->value.strValue, "r");
     int copySize = 0;
-    while (fgets(buffer, sizeof(buffer) - 1, fp) != NULL) {
+    char buffer[BASE_STD_OUT];
+    struct wizObject* arg = pop();
+    memset(buffer,'\0',BASE_STD_OUT);
+    char * outPutStr = (char * )malloc(BASE_STD_OUT);
+    memset(outPutStr,'\0',BASE_STD_OUT);
+
+    if (arg->type != STRINGTYPE)
+        FATAL_ERROR(RUNTIME, lineNo, "Argument to system() function must be a string");
+
+    fp = popen(arg->value.strValue, "r");
+
+    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
         copySize = strlen(buffer);
         while ((outSize + copySize) > outCapacity) {
             outCapacity *= 2;
@@ -451,6 +485,7 @@ void* fSystem(long lineNo) {
         outSize += copySize;
         memset(buffer,'\0',BASE_STD_OUT);
     }
+
     int status = pclose(fp);
     char * code = copyStr("code");
     char * out = copyStr("out");

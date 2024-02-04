@@ -123,12 +123,14 @@ char escape = '\\';
 char nEscape = '\n';
 char tEscape = '\t';
 char nullEscape = '\0';
+char stringEscape = '\"';
 char* escapeMap(char c, long i) {
     switch (c) {
         case '\\' : return &escape;
         case 'n': return &nEscape;
         case 't': return &tEscape;
         case '0': return &nullEscape;
+        case '\"': return &stringEscape;
         default: 
         FATAL_ERROR(
             PARSE, 
@@ -167,8 +169,10 @@ char * createStringLexeme(long * bufferIndex, char * buffer, long lineNo) {
     long strSize;
     char* lexeme;
     while (buffer[currentIndex] != '"' && buffer[currentIndex] != '\0'){
-        if (buffer[currentIndex] == '\\') 
+        if (buffer[currentIndex] == '\\') {
             slashCount++;
+            currentIndex++;
+        }
         currentIndex++;
     }
     strSize = (currentIndex - *bufferIndex) + 1 - slashCount;
