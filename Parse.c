@@ -119,11 +119,13 @@ const char* getTokenName(enum Tokens token) {
 }
 
 /* CHAR PTR MAP */
+char escape = '\\';
 char nEscape = '\n';
 char tEscape = '\t';
 char nullEscape = '\0';
 char* escapeMap(char c, long i) {
     switch (c) {
+        case '\\' : return &escape;
         case 'n': return &nEscape;
         case 't': return &tEscape;
         case '0': return &nullEscape;

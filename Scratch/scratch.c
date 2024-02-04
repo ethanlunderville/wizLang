@@ -74,12 +74,12 @@ void regexOffset(char *string, char *regex) {
     regfree(&rgT);
 }
 
+int fib(int n) {
+    if (n <2) return n;
+    else return fib(n-1) + fib(n-2);
+}
 
 int main() {
-	regexOffset("this and7 that","and");
-    for (int i = 0 ; i < regexSpansSize ; i++)
-        printf("%i : %i\n", 
-            regexSpans[i].low, 
-            regexSpans[i].high);
+	printf("%i\n", fib(100));
 	return 0;
 }

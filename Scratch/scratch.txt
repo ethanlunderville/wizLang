@@ -1,2 +1,9 @@
-11"
-sfas
+#This file contains the functions needed to lexically analyze and parse the source code in into an Abstract Syntax Tree. Lexical analysis takes the bytes from the source file and turns the into a series of tokens ( See Keywords.h to see the TokenStruct ) After this the parser turns the tokens into a tree.
+
+def fib(n):
+    if n < 2:
+        return n
+    else:
+        return fib(n-1) + fib(n-2)
+
+print(fib(40))

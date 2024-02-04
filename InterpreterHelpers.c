@@ -122,12 +122,12 @@ const char* getTypeString(enum Types type) {
     }
 }
 
-void matchOp() {
+void matchOp(long lineNo) {
     struct wizObject * regex = pop();
     struct wizObject * other = pop();
     //@change :: add a line number to the error
     if (regex->type != STRINGTYPE || other->type != STRINGTYPE)
-        FATAL_ERROR(RUNTIME, -1, "=~ operands may only be strings");
+        FATAL_ERROR(RUNTIME, lineNo, "=~ operands may only be strings");
     pushInternal(regexDoesMatch(other->value.strValue, regex->value.strValue));
 }
 
@@ -180,57 +180,77 @@ void powerOp() {
     cleanWizObject(rWiz);
 }
 
-void plusOp() {
+void plusOp(long lineNo) {
+    char * tempString;
     struct wizObject* val2 = pop();
     struct wizObject* val1 = pop();
-    struct wizObject* opArgRef = initWizObject(NUMBER);
+    struct wizObject* opArgRef; //= initWizObject(NUMBER);
     char doubleBuff[DOUBLE_FORMAT_SIZE];
     memset(doubleBuff,'\0',DOUBLE_FORMAT_SIZE);
     /*COMBINATORIC EXPLOSION GOOD LUCK ADDING MORE TYPES*/
-    if (val1->type == CHARADDRESS && val2->type == CHARADDRESS) {
-        opArgRef->type = STRINGTYPE;
-        opArgRef->value.strValue = (char*)malloc(3);
-        opArgRef->value.strValue[0] = *(val1->value.strValue);
-        opArgRef->value.strValue[1] = *(val2->value.strValue);
-        opArgRef->value.strValue[2] = '\0';
+    if ((val1->type == CHARADDRESS || val1->type == CHAR) 
+    && (val2->type == CHARADDRESS || val2->type == CHAR)) {
+        tempString = malloc(3);
+        if (val1->type == CHARADDRESS) 
+            tempString[0] = *(val1->value.strValue); 
+        else
+            tempString[0] = val1->value.charVal;
+        if (val2->type == CHARADDRESS)
+            tempString[1] = *(val2->value.strValue); 
+        else
+            tempString[1] = val2->value.charVal;
+        tempString[2] = '\0';
+        opArgRef = (struct wizObject*)initWizString(tempString);
         pushInternal(opArgRef);
-    } else if (val1->type == CHARADDRESS && val2->type == NUMBER) {
-        opArgRef->type = NUMBER;
-        opArgRef->value.numValue = ((double)*(val1->value.strValue)) + val2->value.numValue;
+    } else if ((val1->type == CHARADDRESS || val1->type == CHAR) && val2->type == NUMBER) {
+        opArgRef = initWizObject(NUMBER);
+        if (val1->type == CHARADDRESS)
+            opArgRef->value.numValue = ((double)*(val1->value.strValue)) + val2->value.numValue;
+        else 
+            opArgRef->value.numValue = ((double)val1->value.charVal) + val2->value.numValue;
         pushInternal(opArgRef);
-    } else if (val1->type == NUMBER && val2->type == CHARADDRESS) {
-        opArgRef->type = NUMBER;
-        opArgRef->value.numValue = (val1->value.numValue) + ((double)*(val2->value.strValue));
+    } else if (val1->type == NUMBER && (val2->type == CHARADDRESS || val2->type == CHAR)) {
+        opArgRef = initWizObject(NUMBER);
+        if (val2->type == CHARADDRESS)
+            opArgRef->value.numValue = (val1->value.numValue) + ((double)*(val2->value.strValue));
+        else 
+            opArgRef->value.numValue = (val1->value.numValue) + val2->value.charVal;
         pushInternal(opArgRef);
-    } else if (val1->type == CHARADDRESS && val2->type == STRINGTYPE) {
-        opArgRef->type = STRINGTYPE;
+    } else if ((val1->type == CHARADDRESS || val1->type == CHAR) && val2->type == STRINGTYPE) {
         int len = strlen(val2->value.strValue) + 2;
-        opArgRef->value.strValue = (char*) malloc(len);
-        opArgRef->value.strValue[0] = *(val1->value.strValue);
-        memcpy(&opArgRef->value.strValue[1],val2->value.strValue,len - 2);
-        opArgRef->value.strValue[len-1] = '\0';
+        tempString = malloc(len);
+        if (val1->type == CHARADDRESS)
+            tempString[0] = *(val1->value.strValue);
+        else 
+            tempString[0] = val1->value.charVal;
+        memcpy(&tempString[1],val2->value.strValue,len - 2);
+        tempString[len-1] = '\0';
+        opArgRef = (struct wizObject*)initWizString(tempString);
         pushInternal(opArgRef);
-    } else if (val1->type == STRINGTYPE && val2->type == CHARADDRESS) {
-        opArgRef->type = STRINGTYPE;
+    } else if (val1->type == STRINGTYPE && (val2->type == CHARADDRESS || val2->type == CHAR)) {
         int len = strlen(val1->value.strValue) + 2;
-        opArgRef->value.strValue = (char*) malloc(len);
-        memcpy(opArgRef->value.strValue,val1->value.strValue,len - 2);
-        opArgRef->value.strValue[len-2] = *(val2->value.strValue);
-        opArgRef->value.strValue[len-1] = '\0';
+        tempString = malloc(len);
+        memcpy(tempString,val1->value.strValue,len - 2);
+        if (val2->type == CHARADDRESS)
+            tempString[len-2] = *(val2->value.strValue);
+        else 
+            tempString[len-2] = val2->value.charVal;
+        tempString[len-1] = '\0';
+        opArgRef = (struct wizObject*)initWizString(tempString);
         pushInternal(opArgRef);
     } else if (val1->type == STRINGTYPE && val2->type == STRINGTYPE) {
         int oldVal1StrLength = strlen(val1->value.strValue);
         int oldVal2StrLength = strlen(val2->value.strValue);
         int newStrSize = oldVal1StrLength + oldVal2StrLength;
-        opArgRef->value.strValue = malloc(newStrSize + 1);
-        opArgRef->value.strValue[newStrSize] = '\0';
-        opArgRef->type = STRINGTYPE;
-        memcpy(opArgRef->value.strValue,val1->value.strValue,oldVal1StrLength);
-        memcpy(opArgRef->value.strValue + oldVal1StrLength, val2->value.strValue, oldVal2StrLength);
+        tempString = malloc(newStrSize + 1);
+        tempString[newStrSize] = '\0';
+        memcpy(tempString,val1->value.strValue,oldVal1StrLength);
+        memcpy(tempString + oldVal1StrLength, val2->value.strValue, oldVal2StrLength);
+        opArgRef = (struct wizObject*)initWizString(tempString);
         pushInternal(opArgRef);
     } else if (val1->type == NUMBER && val2->type == NUMBER) {
+        opArgRef = initWizObject(NUMBER);
         opArgRef->value.numValue = (val1->value.numValue + val2->value.numValue);
-        opArgRef->type = NUMBER;
         pushInternal(opArgRef); 
     } else if (val1->type == STRINGTYPE && val2->type == NUMBER) { /*CHUNKY ... I LOVE C*/
         int maxLength = snprintf(NULL, 0, "%f", val2->value.numValue) + 1;
@@ -239,11 +259,11 @@ void plusOp() {
             removeZerosFromDoubleString(doubleBuff);
         int val1StrLength = strlen(val1->value.strValue);
         int doubleStrLength  = strlen(doubleBuff);
-        opArgRef->value.strValue = malloc(val1StrLength + doubleStrLength + 1);
-        opArgRef->value.strValue[val1StrLength + doubleStrLength] = '\0';
-        memcpy(opArgRef->value.strValue, val1->value.strValue, val1StrLength);
-        memcpy(opArgRef->value.strValue + val1StrLength,doubleBuff, doubleStrLength);
-        opArgRef->type = STRINGTYPE;
+        tempString = (char*)malloc(val1StrLength + doubleStrLength + 1);
+        tempString[val1StrLength + doubleStrLength] = '\0';
+        memcpy(tempString, val1->value.strValue, val1StrLength);
+        memcpy(tempString + val1StrLength,doubleBuff, doubleStrLength);
+        opArgRef = (struct wizObject*)initWizString(tempString);
         pushInternal(opArgRef);
     } else if (val1->type == NUMBER && val2->type == STRINGTYPE) {
         int maxLength = snprintf(NULL, 0, "%f", val1->value.numValue) + 1;
@@ -252,12 +272,14 @@ void plusOp() {
             removeZerosFromDoubleString(doubleBuff);
         int val2StrLength = strlen(val2->value.strValue);
         int doubleStrLength  = strlen(doubleBuff);
-        opArgRef->value.strValue = malloc(val2StrLength + doubleStrLength + 1);
-        opArgRef->value.strValue[val2StrLength + doubleStrLength] = '\0';
-        memcpy(opArgRef->value.strValue, doubleBuff, doubleStrLength);
-        memcpy(opArgRef->value.strValue + doubleStrLength, val2->value.strValue, val2StrLength);
-        opArgRef->type = STRINGTYPE;
+        tempString = (char*)malloc(val2StrLength + doubleStrLength + 1);
+        tempString[val2StrLength + doubleStrLength] = '\0';
+        memcpy(tempString, doubleBuff, doubleStrLength);
+        memcpy(tempString + doubleStrLength, val2->value.strValue, val2StrLength);
+        opArgRef = (struct wizObject*)initWizString(tempString);
         pushInternal(opArgRef);
+    } else {
+        FATAL_ERROR(RUNTIME, lineNo, "Unsupported operand types on + operator");
     }
     cleanWizObject(val1);
     cleanWizObject(val2);

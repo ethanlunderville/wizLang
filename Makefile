@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -g
 SRC = *.c -lm
 OUT = a.out
-FILE = Scratch/test.rs
+FILE = test.rs
 
 .PHONY: all run debug vrun clean
 

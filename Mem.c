@@ -19,3 +19,10 @@ char * copyStr(char * str) {
     strncpy(copy, str, len);
     return copy;
 }
+
+char * genStr(int size) {
+    char * copy = malloc(size+1);
+    memset(copy,'#',size-1);
+    copy[size] = '\0';
+    return copy;
+}

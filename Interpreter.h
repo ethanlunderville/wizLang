@@ -125,10 +125,10 @@ void interpret();
 int floatStrContainsDecimal(char * str);
 int removeZerosFromDoubleString(char * str);
 
-void plusOp();
+void plusOp(long lineNo);
 void assignOp();
 void powerOp();
-void matchOp();
+void matchOp(long lineNo);
 
 void jengaMomentLoL();
 

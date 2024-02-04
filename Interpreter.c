@@ -263,8 +263,8 @@ void* binOpCode() {
     enum Tokens operation = fetchArg(instructionIndex)->value.opValue;
     switch (operation) {
         case PIPE: break;
-        case MATCH: matchOp(); break;
-        case ADD: plusOp(); break;
+        case MATCH: matchOp(fetchCurrentLine()); break;
+        case ADD: plusOp(fetchCurrentLine()); break;
         case POWER: powerOp(); break;
         case ASSIGNMENT: assignOp(); break;
         case NOTEQUAL: EQ_OP_EXECUTION_MACRO(!=);

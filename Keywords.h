@@ -24,17 +24,18 @@ enum Tokens {
     /*BEGIN OPERATORS*/
     BEGINOPERATORS,
     ASSIGNMENT,
-    MATCH,
-    PIPE,
-    EQUAL,
-    NOTEQUAL,
-
+    
     LESSTHAN,
     GREATERTHAN,
     GREATEREQUAL,
     LESSEQUAL,
     AND,
     OR,
+    
+    PIPE,
+    MATCH,
+    EQUAL,
+    NOTEQUAL,
 
     ADD,
     SUBTRACT,

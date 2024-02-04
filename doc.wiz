@@ -1,0 +1,24 @@
+charsPerLine = 50
+strVal = ""
+i = 0
+fName = stdin("Filename:")
+documentation = stdin("Description: ").replace("\n", " ")
+echo("/*\n")
+if (fName.size() != 0) {
+    echo("    Filename: " + fName + "\n")
+}
+echo("    Description:\n")
+while (i < documentation.size()) {
+    if (i == charsPerLine) {
+        while (documentation[i] != ' ')  i-- 
+        strVal = strVal[0:i]
+        echo("    "+strVal)
+        strVal = ""
+        documentation = documentation[i+1 : documentation.size()]
+        i = 0
+    }
+    strVal = strVal + documentation[i]    
+    i++
+}
+echo("    "+strVal)
+echo("\n*/") 

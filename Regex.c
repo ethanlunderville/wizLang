@@ -34,8 +34,8 @@ void regexOffset(char *string, char *regex) {
         offset = end;
         actualOffset += end; 
     }
-    for (int i = 0 ; i < regexSpansSize ; i++)
-        printf("%i : %i\n", regexSpans[i].low ,regexSpans[i].high);
+    //for (int i = 0 ; i < regexSpansSize ; i++)
+    //    printf("%i : %i\n", regexSpans[i].low ,regexSpans[i].high);
     regfree(&rgT);
 }
 
@@ -47,9 +47,11 @@ struct wizObject* regexDoesMatch(char * string, char * regex) {
     //NO MATCH
     if ((regexec(&rgT, string, 1, &match, 0)) != 0) { 
         t->value.numValue = 0;
+        regfree(&rgT);
         return t;
     }
     t->value.numValue = 1;
+    regfree(&rgT);
     return t;
 }
 

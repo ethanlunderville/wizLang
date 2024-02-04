@@ -215,10 +215,10 @@ void checkIsDir(char * fileName);
 
 void* fRead(long lineNo) {
     struct wizObject * path = pop();
-    printf("read: %s\n", path->value.strValue);
-    printf("base: %s\n", currentPath); 
+    //printf("read: %s\n", path->value.strValue);
+    //printf("base: %s\n", currentPath); 
     buildPath(path->value.strValue);
-    printf("after: %s\n", currentPath);
+    //printf("after: %s\n", currentPath);
     struct wizList * fileBuff = initWizString(fileToBuffer(currentPath));
     pushInternal((struct wizObject *)fileBuff);
     cleanWizObject(path);

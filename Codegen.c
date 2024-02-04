@@ -254,7 +254,6 @@ void codeGenWalker(struct AST * aTree) {
             {
             // There is a more specific way to handle the  
             // dot operator in the switch statement below
-            br();
             union TypeStore value;
             if (getToken(aTree) == DOTOP) 
                 break;
@@ -387,9 +386,20 @@ void codeGenWalker(struct AST * aTree) {
             struct AST* funcAST = aTree->children[1]; 
             programAdder(aTree,createStackFrame, nullVal, -1);
             codeGenWalker(argAST);
-            for (int i = 0 ; i < funcAST->childCount ; i++)
-                codeGenWalker(funcAST->children[i]);
             union TypeStore value;
+            if (funcAST->childCount > 0
+            && (getToken(funcAST->children[funcAST->childCount-1]) == LAMBDACALL 
+            || getToken(funcAST->children[funcAST->childCount-1]) == OPENBRACKET)) {
+                assert(getToken(funcAST) == FUNCTIONCALLIDENT);
+                for (int i = 0 ; i < funcAST->childCount - 1 ; i++)
+                    codeGenWalker(funcAST->children[i]);
+                value.strValue = funcAST->token->lexeme;
+                programAdder(funcAST, call, value, STRINGTYPE);
+                codeGenWalker(funcAST->children[funcAST->childCount-1]);
+                break;
+            }
+            for (int i = 0 ; i < funcAST->childCount ; i++)
+                codeGenWalker(funcAST->children[i]); 
             value.strValue = funcAST->token->lexeme;
             if (getToken(funcAST) != DOTOP)
                 programAdder(funcAST, call, value, STRINGTYPE);
