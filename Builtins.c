@@ -22,6 +22,7 @@
 #include "Error.h"
 #include "Mem.h"
 #include "Regex.h"
+#include "IO.h"
 
 int treeIndent = 0;
 int jsonPrinterLeft = 0;
@@ -66,8 +67,7 @@ void* fSize(long lineNo) {
             getTypeString(potentialVal->type)
         );
     struct wizList* val = (struct wizList*)potentialVal;
-    struct wizObject* wizOb = (struct wizObject*)malloc(sizeof(struct wizObject));
-    wizOb->type = NUMBER;
+    struct wizObject* wizOb = initWizObject(NUMBER);
     wizOb->value.numValue = ((double)val->size);
     cleanWizObject((struct wizObject*)val);
     pushInternal(wizOb);
@@ -203,13 +203,6 @@ void * fType(long lineNo) {
     pushInternal(ret);
 }
 
-void buildPath(char * rPath) {
-    int rPathSize = strlen(rPath);
-    memset(currentPath + basePathSize, '\0' , PATH_MAX - basePathSize);
-    if (basePathSize + rPathSize > PATH_MAX)
-        FATAL_ERROR(IO, -1, "Internal error file path string was too long when appended to base path");
-    memcpy(currentPath + basePathSize, rPath, rPathSize);
-}
 
 char* fileToBuffer(char * fileName);
 void checkIsDir(char * fileName);
@@ -243,9 +236,21 @@ void* fWrite(long lineNo) {
 
 void* fClear(long lineNo) {
     struct wizList * list; 
+    struct wizDict * dict; 
     struct wizObject * _list = pop();
-    if (_list->type != LIST)
-        FATAL_ERROR(RUNTIME, lineNo, "Unable to clear non-list datatype");
+    if (_list->type != LIST && _list->type != DICTIONARY)
+        FATAL_ERROR(RUNTIME, lineNo, "Unable to clear non-list or non-map datatype");
+    if (_list->type == DICTIONARY) {
+        dict = (struct wizDict*) _list;
+        pushInternal((struct wizObject*)(dict->keys));
+        fClear(lineNo);
+        pop();
+        pushInternal((struct wizObject*)(dict->values));
+        fClear(lineNo);
+        pop();
+        pushInternal(_list);
+        return NULL;    
+    }
     list = (struct wizList*) _list;
     while (list->size != 0) {
         decRef(_list->value.listVal[list->size-1]);
@@ -446,7 +451,7 @@ void* fSplit(long lineNo) {
         cleanWizObject(wizReg);    
         return NULL;
     }
-    br();
+
     currStr = (char*) malloc(copyAmount + 1);
     currStr[copyAmount] = '\0';
     strncpy(currStr, wizStr->value.strValue + lastHighVal, copyAmount);

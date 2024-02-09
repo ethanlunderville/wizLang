@@ -14,7 +14,6 @@
 
 #include "Keywords.h"
 
-#define OPCODE_ARGLIMIT 5
 #define LINE_STACK_LIMIT 100
 #define STACK_LIMIT 100
 #define DOUBLE_FORMAT_SIZE 100
@@ -85,7 +84,6 @@ long remainingArgumentNumber();
 struct wizObject * fetchArg(long opCodeIndex);
 struct opCode * codeGen(struct AST * aTree);
 void codeGenWalker(struct AST * aTree);
-void printOpCodes();
 
 struct wizObject* pop();
 void* pushInternal(struct wizObject* arg);
@@ -118,7 +116,6 @@ struct wizObject* initWizObject(enum Types type);
 struct wizList* initWizList(enum Types type);
 struct wizList* initWizString(char* str);
 
-int dumpStack();
 void interpret();
 
 // Helpers

@@ -82,3 +82,36 @@ temp = "hello".map((e)=>{
 
 echo("EXPECT [e] :: ")
 echo(temp)
+
+/*
+desiredLineNumber = 9
+months = []
+counts = []
+map = {}
+path = 0
+for (k = 0 ; k < 10 ; k++) {
+    path = stdin("Input a path > ")
+    system("ls -l " + path)["out"].split("\n").filter((e)=>{
+        
+        arr = e.split(" ")
+        if (e.split(" ").size() == desiredLineNumber) { return arr }
+    }).forEach((e)=> {
+        echo(e)
+        month = e[5]
+        for (i=0; i < months.size() ;i++) {
+            if (months[i] == month) {
+                counts[i] = counts[i] + 1
+                return
+            }
+        }
+        months.push(month)
+        counts.push(0)
+    })
+
+    for (i = 0 ; i < months.size() ; i++){
+        map[counts[i]] = months[i]
+    }
+
+    map.echo()
+}
+*/

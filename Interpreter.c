@@ -24,6 +24,7 @@
 #include "Switchboard.h"
 #include "Error.h"
 #include "DataStructures.h"
+#include "Debug.h"
 
 // These two are defined in Codegen.c
 extern long programSize; 
@@ -44,27 +45,7 @@ long instructionIndex = 0;
 struct Context* context;
 
 // Pseudo Null
-struct wizObject nullV;
-
-/*
-
-    This is to fetch args from the flattened list of
-    arguments. See the initWizArg function in
-    Codegen.c for a explaination as to why this is
-    done in this way
-
-*/
-
-int printCounterStack(struct lineCounterStack* counterStack) {
-    puts("|---------Dump-----------|");
-    int i = counterStack->stackSize - 1;
-    for (; i > -1; i--)
-        printf(
-            "%li\n------------------------\n", 
-            counterStack->stack[i]
-        );
-    return i;
-}   
+struct wizObject nullV;  
 
 long popCounterStack(struct lineCounterStack* counterStack) {
     if (counterStack->stackSize == 0) 
@@ -80,8 +61,9 @@ long popCounterStack(struct lineCounterStack* counterStack) {
 }
 
 void pushCounterStack(struct lineCounterStack* counterStack, long val) {
-    if (counterStack->stackSize == STACK_LIMIT)
+    if (counterStack->stackSize == STACK_LIMIT) {
         FATAL_ERROR(LANGUAGE, fetchCurrentLine(), "Stack Overflow on Counter Stack");
+    }
     // NOTE :: THE FIRST ARGUMENT OF THE CURRENT opCode IS PUSHED
     counterStack->stack[counterStack->stackSize] = val;
     counterStack->stackSize++;
@@ -103,39 +85,7 @@ long remainingArgumentNumber() {
 
 // Stack dumper for debugging.
 
-int dumpStack() {
-    puts("|---------Dump-----------|");
-    int i = stackSize;
-    for (; i > -1; i--) {
-        if (stack[i] == NULL) 
-            continue;
-        switch (stack[i]->type) {
-        case IDENT:
-        case STRINGTYPE:
-            printf(
-                " %s\n", 
-                stack[i]->value.strValue
-            ); break;
-        case NUMBER:
-            printf(
-                " %f\n", 
-                stack[i]->value.numValue
-            ); break;
-        case CHARADDRESS:
-            printf(
-                " %c\n",
-                *(stack[i]->value.strValue)
-            ); break;
-        case CHAR: 
-            printf(
-                " %c\n",
-                stack[i]->value.charVal
-            ); break;
-        }
-        puts(" ------------------------");
-    }    
-    
-}
+
 
 void jengaMomentLoL(int stackElementIndex) {
     int copyAmmount = stackSize - stackElementIndex - 1;
@@ -365,7 +315,9 @@ void * jumpNe() {
     cleanWizObject(wizOb);
 }
 
-void * createStackFrame() { pushCounterStack(&stackFrames, stackSize); }
+void * createStackFrame() { 
+    pushCounterStack(&stackFrames, stackSize); 
+}
 
 void * call() {
     char* functionName = fetchArg(instructionIndex)->value.strValue;
@@ -511,7 +463,13 @@ void * unaryFlip() {
 void interpret() {
     initNullV();
     while (instructionIndex < programSize) {
+        //long save =  stackFrames.stackSize;
         program[instructionIndex].associatedOperation();
+        //if (stackFrames.stackSize - save != 0) {
+        //    br();
+        //}
+        //onCode(&call, &printStackFrames);
+        //printStackFrames();
         instructionIndex++;
 #ifdef DUMP_STACK
         dumpStack();
